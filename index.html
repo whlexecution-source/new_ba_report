@@ -212,8 +212,8 @@
     const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw9sRrudHqHOpV8E37vyyYsT4uTBrP25Dh560SuoAVmmOedGT1s3cl-x3UnEA9co6vA/exec"; // ⬅️ ⚠️ วาง URL ที่ Deploy ใหม่
 
     // --- 0. GLOBAL DATA STORE ---
-    let currentView = 'ba'; // 'ba' or 'admin'
-    let userRole = "BA"; 
+    // let currentView = 'ba'; // ⬅️ ⚠️ ลบตัวแปรนี้ออก
+    let userRole = "BA"; // ค่าเริ่มต้น
     let teamName = "";
     let allTeamRawData = []; // ข้อมูลดิบที่กรองแล้ว (ของ BA หรือ ของทั้งทีม)
     let allUsersInTeam = []; // ['All Team', 'User A', 'User B']
@@ -272,23 +272,9 @@
     // --- 2. BACKEND CONNECTION & DATA PROCESSING ---
 
     /**
-     * ⚠️ NEW: ตรวจสอบ URL เพื่อตั้งค่าโหมด (BA หรือ Admin)
+     * ⚠️ NEW: ลบการตรวจสอบ URL ออก
      */
     document.addEventListener("DOMContentLoaded", () => {
-        const path = window.location.pathname;
-        
-        if (path.includes('/admin')) {
-            currentView = 'admin';
-            appTitle.textContent = "TAP: Admin Dashboard";
-            loginTitle.textContent = "เข้าสู่ระบบ (ผู้ดูแล)";
-            document.title = "Admin Dashboard";
-        } else {
-            currentView = 'ba';
-            appTitle.textContent = "TAP: BA Sales Report";
-            loginTitle.textContent = "เข้าสู่ระบบ";
-            document.title = "BA Sales Report";
-        }
-
         // --- 5. EVENT LISTENERS ---
         loginButton.addEventListener("click", handleLogin);
         logoutButton.addEventListener("click", handleLogout);
@@ -323,8 +309,8 @@
             return null;
         }
 
-        // ⚠️ NEW: เรียก API ตาม 'currentView' (ba or admin)
-        const url = `${GOOGLE_APP_SCRIPT_URL}?view=${currentView}&phone=${phoneNo}&cachebust=${new Date().getTime()}`;
+        // ⚠️ NEW: ลบ ?view=${currentView} ออก
+        const url = `${GOOGLE_APP_SCRIPT_URL}?phone=${phoneNo}&cachebust=${new Date().getTime()}`;
         
         try {
             const response = await fetch(url, {
@@ -337,25 +323,19 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json(); // คาดหวัง Object หรือ Array
-
+            const data = await response.json(); // ⬅️ ⚠️ NEW: คาดหวัง Object เสมอ
+            
             if (data.error) {
                 throw new Error(data.error);
             }
             
-            // ตรวจสอบข้อมูลที่ได้รับ
-            if (currentView === 'admin') {
-                if (!data.teamData || data.teamData.length === 0) {
-                    throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
-                }
-            } else {
-                if (!Array.isArray(data) || data.length === 0) {
-                     throw new Error("ไม่พบข้อมูลสำหรับเบอร์โทรศัพท์นี้");
-                }
+            // ⚠️ NEW: ตรวจสอบ data.userData
+            if (!data.userData || data.userData.length === 0) {
+                 throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
             }
             
             loginError.classList.add("hidden");
-            return data; // Return the raw response (Array or Object)
+            return data; // ⬅️ ⚠️ NEW: Return object { role, teamName, userData }
 
         } catch (error) {
             console.error("Fetch error:", error.message);
@@ -475,12 +455,20 @@
         sessionStorage.setItem("userPhone", phoneNo);
         userPhoneEl.textContent = `เบอร์โทร: ${phoneNo}`;
 
-        if (currentView === 'admin') {
+        // ⚠️ NEW: ตรวจสอบ Role จาก Backend
+        // 'data' is an Object: { role, teamName, userData }
+        userRole = data.role; // "BA", "Supervisor", "SuperAdmin"
+        teamName = data.teamName; 
+        allTeamRawData = data.userData; // This is the array
+        
+        // ประมวลผลข้อมูลดิบ (เหมือนกันทั้ง BA และ Admin)
+        processedDataForDisplay = processRawData(allTeamRawData);
+
+        if (userRole === "Supervisor" || userRole === "SuperAdmin") {
             // --- ADMIN/SUPERVISOR LOGIN LOGIC ---
-            // 'data' is an Object: { role, teamName, teamData }
-            userRole = data.role; // "Supervisor" or "SuperAdmin"
-            teamName = data.teamName; 
-            allTeamRawData = data.teamData; // This is the array
+            appTitle.textContent = "TAP: Admin Dashboard";
+            loginTitle.textContent = "เข้าสู่ระบบ (ผู้ดูแล)";
+            document.title = "Admin Dashboard";
             
             // ⚠️ ต้องมีคอลัมน์ 'user'
             allUsersInTeam = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").sort())]; 
@@ -492,14 +480,13 @@
 
         } else {
             // --- BA LOGIN LOGIC ---
-            // 'data' is an Array: [...]
-            userRole = "BA";
-            allTeamRawData = data; // This is the array
-            
+            appTitle.textContent = "TAP: BA Sales Report";
+            loginTitle.textContent = "เข้าสู่ระบบ";
+            document.title = "BA Sales Report";
+
             userFilterContainer.classList.add("hidden"); // <-- ⚠️ ซ่อนฟิลเตอร์
             
             // BA logic
-            processedDataForDisplay = processRawData(allTeamRawData);
             userNameEl.textContent = processedDataForDisplay.userName; // Set name
             
             populateMonthFilter(processedDataForDisplay.salesByMonth);
@@ -569,6 +556,11 @@
         processedDataForDisplay = {};
         userRole = "BA"; // Reset role
         userFilterContainer.classList.add("hidden"); // <-- ซ่อนฟิลเตอร์
+
+        // ⚠️ NEW: Reset titles
+        appTitle.textContent = "TAP: Sales Report";
+        loginTitle.textContent = "เข้าสู่ระบบ";
+        document.title = "Sales Dashboard";
     }
 
     function populateMonthFilter(salesByMonth) {
@@ -670,7 +662,7 @@
         
         // --- ⚠️ NEW: คำนวณเป้าหมายรายคน (เฉพาะโหมด Admin) ---
         let individualDailyTarget = dailyTarget; // ค่า default
-        if (currentView === 'admin' && allUsersInTeam.length > 1) {
+        if (userRole !== "BA" && allUsersInTeam.length > 1) {
             // allUsersInTeam มี "All Team" รวมอยู่ด้วย, จึงต้อง -1
             const totalUsersInTeam = allUsersInTeam.length > 1 ? allUsersInTeam.length - 1 : 1;
             individualDailyTarget = dailyTarget / totalUsersInTeam;
