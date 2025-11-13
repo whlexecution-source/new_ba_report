@@ -302,48 +302,97 @@
     /**
      * ⚠️ UPDATED: This now uses fetch() and calls the correct API view
      */
-    async function fetchDataFromBackend(phoneNo) {
-        if (GOOGLE_APP_SCRIPT_URL === "YOUR_NEW_WEB_APP_URL_HERE") {
-            loginError.textContent = "กรุณาตั้งค่า GOOGLE_APP_SCRIPT_URL ในโค้ด HTML";
-            loginError.classList.remove("hidden");
-            return null;
-        }
-
-        // ⚠️ NEW: ลบ ?view=${currentView} ออก
-        const url = `${GOOGLE_APP_SCRIPT_URL}?phone=${phoneNo}&cachebust=${new Date().getTime()}`;
-        
-        try {
-            const response = await fetch(url, {
-                method: 'GET',
-                redirect: 'follow',
-                mode: 'cors'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json(); // ⬅️ ⚠️ NEW: คาดหวัง Object เสมอ
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            // ⚠️ NEW: ตรวจสอบ data.userData
-            if (!data.userData || data.userData.length === 0) {
-                 throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
-            }
-            
-            loginError.classList.add("hidden");
-            return data; // ⬅️ ⚠️ NEW: Return object { role, teamName, userData }
-
-        } catch (error) {
-            console.error("Fetch error:", error.message);
-            loginError.textContent = error.message;
-            loginError.classList.remove("hidden");
-            return null;
-        }
+   /**
+ * ⚠️ แทนที่ฟังก์ชัน fetchDataFromBackend() ด้วยโค้ดนี้ทั้งหมด
+ * วิธีนี้ใช้ iframe + postMessage แทน fetch เพื่อหลีกเลี่ยง CORS
+ * 
+ * วิธีการใช้งาน:
+ * 1. ค้นหา function fetchDataFromBackend ในไฟล์ HTML
+ * 2. ลบ function เดิมทิ้งทั้งหมด
+ * 3. Paste function นี้แทน
+ */
+async function fetchDataFromBackend(phoneNo) {
+    if (GOOGLE_APP_SCRIPT_URL === "YOUR_NEW_WEB_APP_URL_HERE") {
+        loginError.textContent = "กรุณาตั้งค่า GOOGLE_APP_SCRIPT_URL ในโค้ด HTML";
+        loginError.classList.remove("hidden");
+        return null;
     }
+
+    // สร้าง URL
+    const params = new URLSearchParams({
+        view: currentView,
+        phone: phoneNo,
+        cachebust: new Date().getTime()
+    });
+    
+    const url = `${GOOGLE_APP_SCRIPT_URL}?${params.toString()}`;
+    
+    try {
+        // ใช้ iframe + postMessage แทน fetch
+        const data = await new Promise((resolve, reject) => {
+            // สร้าง iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            
+            // ตั้งค่า timeout
+            const timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error('Request timeout'));
+            }, 30000);
+            
+            // ฟังก์ชัน cleanup
+            const cleanup = () => {
+                clearTimeout(timeout);
+                window.removeEventListener('message', messageHandler);
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            };
+            
+            // Handler สำหรับรับข้อมูล
+            const messageHandler = (event) => {
+                // ตรวจสอบว่าข้อมูลมาจาก Google Apps Script
+                if (event.origin.includes('googleusercontent.com') || 
+                    event.origin.includes('script.google.com')) {
+                    cleanup();
+                    resolve(event.data);
+                }
+            };
+            
+            // ฟัง message
+            window.addEventListener('message', messageHandler);
+            
+            // โหลด iframe
+            iframe.src = url;
+            document.body.appendChild(iframe);
+        });
+
+        // ตรวจสอบข้อมูล
+        if (data && data.error) {
+            throw new Error(data.error);
+        }
+        
+        // ตรวจสอบข้อมูลที่ได้รับ
+        if (currentView === 'admin') {
+            if (!data || !data.teamData || data.teamData.length === 0) {
+                throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
+            }
+        } else {
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                throw new Error("ไม่พบข้อมูลสำหรับเบอร์โทรศัพท์นี้");
+            }
+        }
+        
+        loginError.classList.add("hidden");
+        return data;
+
+    } catch (error) {
+        console.error("Fetch error:", error.message);
+        loginError.textContent = error.message;
+        loginError.classList.remove("hidden");
+        return null;
+    }
+}
 
     /**
      * (ฟังก์ชันนี้เหมือนเดิม)
