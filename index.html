@@ -217,7 +217,7 @@
     <!-- Internal JavaScript -->
     <script>
     // --- ⚠️ NEW: ใส่ URL ของ API ที่คุณได้จากขั้นตอนที่ 1 ---
-    const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtBzKFI97kxZ0M7cobxG4L9ulAB2wpVH25LqkYaW1MCKOhLegRNhsFRluTc3eGMFas/exec"; // ⬅️ ⚠️ วาง URL ที่ Deploy ใหม่
+    const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtBzKFI97kxZ0M7cobxG4L9ulAB2wpVH25LqkYaW1MCKOhLegRNhsFRluTc3eGMFas/exec"; // ⬅️ ⚠️ URL ใหม่ที่ผู้ใช้ระบุ
 
     // --- 0. GLOBAL DATA STORE ---
     let userRole = "BA"; // ค่าเริ่มต้น
@@ -226,6 +226,10 @@
     let allUsersInTeam = []; // ['All Team', 'User A', 'User B']
     let allTeamsList = []; // ⚠️ NEW: เก็บรายชื่อทีมทั้งหมดสำหรับ SuperAdmin
     let processedDataForDisplay = {}; // ข้อมูลที่ประมวลผลแล้วเพื่อแสดงผล
+
+    // ⚠️ NEW: เป้าหมายพื้นฐานต่อ BA 1 คน และ เป้าหมายรวมที่คำนวณได้
+    const baseMonthlyTarget = 744; 
+    let effectiveMonthlyTarget = baseMonthlyTarget; 
 
     const today = new Date();
     const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
@@ -249,8 +253,8 @@
     const userPhoneEl = document.getElementById("user-phone");
     const monthFilter = document.getElementById("month-filter");
 
-    const teamFilterContainer = document.getElementById("team-filter-container"); // ⚠️ NEW
-    const teamFilter = document.getElementById("team-filter"); // ⚠️ NEW
+    const teamFilterContainer = document.getElementById("team-filter-container"); 
+    const teamFilter = document.getElementById("team-filter"); 
 
     const userFilterContainer = document.getElementById("user-filter-container");
     const userFilter = document.getElementById("user-filter");
@@ -278,7 +282,6 @@
     const modalUserBreakdownEl = document.getElementById("modal-user-breakdown");
     const modalUserBreakdownListEl = document.getElementById("modal-user-breakdown-list");
     
-    const monthlyTarget = 744; 
     
     // --- 2. BACKEND CONNECTION & DATA PROCESSING ---
 
@@ -288,7 +291,7 @@
         logoutButton.addEventListener("click", handleLogout);
         userFilter.addEventListener("change", processAndDisplayData);
         monthFilter.addEventListener("change", handleMonthChange); 
-        teamFilter.addEventListener("change", handleTeamChange); // ⚠️ NEW
+        teamFilter.addEventListener("change", handleTeamChange); 
         phoneInput.addEventListener("keypress", (event) => {
             if (event.key === "Enter") handleLogin();
         });
@@ -312,10 +315,8 @@
      * ⚠️ UPDATED: This now accepts an optional teamFilter
      */
     async function fetchDataFromBackend(phoneNo, teamFilterValue = null) {
-        if (GOOGLE_APP_SCRIPT_URL === "") {
-            loginError.textContent = "กรุณาตั้งค่า GOOGLE_APP_SCRIPT_URL ให้ถูกต้อง";
-            loginError.classList.remove("hidden");
-            return null;
+        if (GOOGLE_APP_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbwtBzKFI97kxZ0M7cobxG4L9ulAB2wpVH25LqkYaW1MCKOhLegRNhsFRluTc3eGMFas/exec") {
+            // URL is correctly set
         }
 
         let url = `${GOOGLE_APP_SCRIPT_URL}?phone=${phoneNo}&cachebust=${new Date().getTime()}`;
@@ -447,7 +448,7 @@
     // --- 3. LOGIN/LOGOUT & FILTER FUNCTIONS ---
     
     /**
-     * ⚠️ UPDATED: Login function to handle teamFilter for SuperAdmin on initial load
+     * ⚠️ UPDATED: Login function
      */
     async function handleLogin() {
         const phoneNo = phoneInput.value;
@@ -519,6 +520,9 @@
             teamFilterContainer.classList.add("hidden"); // ซ่อน Team Filter
             userFilterContainer.classList.add("hidden"); // ซ่อน User Filter
             
+            // BA Target is fixed at baseMonthlyTarget
+            effectiveMonthlyTarget = baseMonthlyTarget; 
+
             userNameEl.textContent = processedDataForDisplay.userName; // Set name
             
             populateMonthFilter(processedDataForDisplay.salesByMonth);
@@ -597,21 +601,27 @@
     }
 
     /**
-     * (ฟังก์ชันสำหรับ Admin/Supervisor)
+     * ⚠️ MODIFIED: Function to calculate effectiveMonthlyTarget
      */
     function processAndDisplayData() {
         const selectedUser = userFilter.value;
         let dataToProcess;
+        let numUsers = 1; // Default to 1 user (BA mode or specific user filter)
 
-        // ⚠️ NEW: คำนวณรายชื่อ User ใหม่ทุกครั้งที่เปลี่ยนทีม/User
-        allUsersInTeam = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").sort())]; 
+        // ⚠️ NEW: คำนวณรายชื่อ User ที่อยู่ในกลุ่มข้อมูล 'allTeamRawData' ปัจจุบัน
+        const uniqueUsersInGroup = [...new Set(allTeamRawData.map(r => r.user || "Unknown").filter(u => u && u !== "Unknown"))].sort();
+        allUsersInTeam = ["All Team", ...uniqueUsersInGroup]; 
         populateUserFilter(allUsersInTeam);
         
         if (selectedUser === "All Team") {
             dataToProcess = allTeamRawData;
             userNameEl.textContent = `${teamName} (รวม)`;
+            
+            // Calculate effective target based on actual unique users in the filtered team data
+            numUsers = uniqueUsersInGroup.length; 
+            
         } else {
-            // พยายามเลือก user เดิม หากไม่มี user เดิม ให้เลือก "All Team"
+            // Admin viewing specific BA
             const userExists = allUsersInTeam.includes(selectedUser);
             const userToFilter = userExists ? selectedUser : "All Team";
             userFilter.value = userToFilter;
@@ -619,12 +629,17 @@
             if (userToFilter === "All Team") {
                  dataToProcess = allTeamRawData;
                  userNameEl.textContent = `${teamName} (รวม)`;
+                 numUsers = uniqueUsersInGroup.length; 
             } else {
                  dataToProcess = allTeamRawData.filter(r => (r.user || "Unknown") === userToFilter);
                  userNameEl.textContent = userToFilter;
+                 numUsers = 1; // Filtering for one user
             }
         }
-
+        
+        // ⚠️ NEW: Set the effective monthly target based on number of unique users (or 0 if no users/data)
+        effectiveMonthlyTarget = (numUsers > 0) ? baseMonthlyTarget * numUsers : 0; 
+        
         processedDataForDisplay = processRawData(dataToProcess);
         populateMonthFilter(processedDataForDisplay.salesByMonth);
         const latestMonth = Object.keys(processedDataForDisplay.salesByMonth).sort().pop();
@@ -648,6 +663,7 @@
         allTeamRawData = [];
         processedDataForDisplay = {};
         userRole = "BA"; // Reset role
+        effectiveMonthlyTarget = baseMonthlyTarget; // Reset target
         teamFilterContainer.classList.add("hidden"); // ซ่อน Team Filter
         userFilterContainer.classList.add("hidden"); // ซ่อน User Filter
 
@@ -719,12 +735,20 @@
         }).format(number) + ' ล.';
     }
 
+    /**
+     * ⚠️ MODIFIED: Use effectiveMonthlyTarget
+     */
     function loadDashboard(dailySalesData) {
         const totalMonthlyLiters = dailySalesData.reduce((sum, day) => sum + day.totalLiters, 0);
-        let progressPercent = (totalMonthlyLiters / monthlyTarget) * 100;
+        
+        // ใช้ effectiveMonthlyTarget
+        let progressPercent = (effectiveMonthlyTarget > 0) ? (totalMonthlyLiters / effectiveMonthlyTarget) * 100 : 100;
         progressPercent = Math.min(progressPercent, 100);
+        
         currentLitersEl.textContent = `ยอดจริง: ${formatLiters(totalMonthlyLiters)}`;
-        litersTargetEl.textContent = `เป้าหมาย: ${formatLiters(monthlyTarget)}`;
+        // ใช้ effectiveMonthlyTarget
+        litersTargetEl.textContent = `เป้าหมาย: ${formatLiters(effectiveMonthlyTarget)}`;
+        
         progressBarEl.style.width = `${progressPercent}%`;
         progressPercentEl.textContent = `${progressPercent.toFixed(1)}% ของเป้าหมาย`;
         return totalMonthlyLiters;
@@ -747,29 +771,22 @@
         }
     }
 
+    /**
+     * ⚠️ MODIFIED: Use effectiveMonthlyTarget to calculate dailyTarget
+     */
     function generateCalendar(year, month, salesDataForMonth, totalMonthlyLiters) {
         calendarGridEl.innerHTML = "";
         const salesMap = new Map(salesDataForMonth.map(day => [day.day, day]));
         const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
         const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-        const dailyTarget = (daysInMonth > 0) ? (monthlyTarget / daysInMonth) : 0;
         
-        // --- ⚠️ NEW: คำนวณเป้าหมายรายคน (เฉพาะโหมด Admin) ---
-        let individualDailyTarget = dailyTarget; // ค่า default
-        if (userRole !== "BA" && userFilter.value === "All Team") {
-            // allUsersInTeam มี "All Team" รวมอยู่ด้วย, จึงต้อง -1 (ถ้ามี user คนอื่นอยู่)
-            // allUsersInTeam ถูกคำนวณใหม่ใน processAndDisplayData() ทุกครั้งที่เปลี่ยนทีม
-            const totalUsersInTeam = allUsersInTeam.length > 1 ? allUsersInTeam.length - 1 : 1;
-            if (totalUsersInTeam > 0) {
-                // Calculation: Monthly Target / (Days in Month * Number of Users)
-                individualDailyTarget = monthlyTarget / (daysInMonth * totalUsersInTeam);
-            } else {
-                individualDailyTarget = dailyTarget;
-            }
-        }
-        // --- END NEW ---
+        // Daily Target สำหรับกลุ่มที่กำลังดู (User เดียว หรือ รวมทีม)
+        const dailyTarget = (daysInMonth > 0) ? (effectiveMonthlyTarget / daysInMonth) : 0; 
         
-        const remainingTarget = Math.max(0, monthlyTarget - totalMonthlyLiters);
+        // Individual Daily Target (เป้าหมายต่อ BA 1 คนต่อวัน)
+        const individualDailyTarget = (daysInMonth > 0) ? (baseMonthlyTarget / daysInMonth) : 0; 
+        
+        const remainingTarget = Math.max(0, effectiveMonthlyTarget - totalMonthlyLiters);
         let remainingWorkingDays = 0;
 
         if (year > todayYear || (year === todayYear && month > todayMonth)) {
@@ -800,6 +817,7 @@
                 dayCell.appendChild(dayNumberSpan);
                 dayCell.innerHTML += `<span class="day-sales">${new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(dayData.totalLiters)}</span>`;
                 
+                // ใช้ dailyTarget (เป้าหมายรวมของกลุ่ม) สำหรับแถบ KPI ในปฏิทิน
                 const kpiPercent = (dailyTarget > 0) ? Math.min((dayData.totalLiters / dailyTarget) * 100, 100) : 100;
                 const kpiBg = document.createElement("div");
                 kpiBg.className = "daily-kpi-bar-background";
@@ -811,7 +829,7 @@
                 else kpiFill.style.backgroundColor = "#22c55e";
                 kpiBg.appendChild(kpiFill);
                 dayCell.appendChild(kpiBg);
-                // --- ⚠️ MODIFIED: ส่ง individualDailyTarget ไปที่ openModal ---
+                // ส่ง dailyTarget (รวม) และ individualDailyTarget (รายคน) ไปที่ openModal
                 dayCell.addEventListener("click", () => openModal(dayData, dailyTarget, individualDailyTarget));
             } else if (isPastOrToday) {
                 dayCell.className = "calendar-day calendar-day-placeholder";
@@ -837,6 +855,7 @@
      */
     function openModal(dayData, dailyTarget, individualDailyTarget) {
         const actualLiters = dayData.totalLiters;
+        // ใช้ dailyTarget (เป้าหมายรวม) สำหรับแถบ KPI บนสุดของ Modal
         const percentAchieved = (dailyTarget > 0) ? (actualLiters / dailyTarget) * 100 : (actualLiters > 0 ? 100 : 0);
         const kpiPercent = Math.min(percentAchieved, 100);
 
@@ -863,7 +882,7 @@
             const individualTargetFormatted = formatLiters(individualDailyTarget);
 
             for (const [user, userData] of sortedUsers) {
-                // --- ⚠️ NEW: Bar Calculation ---
+                // --- ⚠️ NEW: Bar Calculation ใช้ individualDailyTarget ---
                 const userActual = userData.totalLiters;
                 // คำนวณเปอร์เซ็นต์ (ถ้าเป้าเป็น 0 แต่ทำยอดได้ ให้ 100%)
                 const userPercent = (individualDailyTarget > 0) ? Math.min((userActual / individualDailyTarget) * 100, 100) : (userActual > 0 ? 100 : 0);
