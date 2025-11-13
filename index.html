@@ -99,15 +99,23 @@
                 </div>
                 
                 <div class="flex flex-col sm:flex-row sm:space-x-4">
-                    <!-- ⚠️ NEW: นี่คือฟิลเตอร์สำหรับ Admin ซึ่งจะ 'hidden' ไว้ก่อน -->
-                    <div id="user-filter-container" class="w-full sm:w-1/2 mb-2 sm:mb-0 hidden">
+                    
+                    <!-- ⚠️ NEW: Team Filter (For SuperAdmin) -->
+                    <div id="team-filter-container" class="w-full sm:w-1/3 mb-2 sm:mb-0 hidden">
+                        <label for="team-filter" class="block text-sm font-medium text-gray-700 mb-1">เลือกทีม</label>
+                        <select id="team-filter" class="w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </select>
+                    </div>
+                    
+                    <!-- User Filter (For Admin/Supervisor) -->
+                    <div id="user-filter-container" class="w-full sm:w-1/3 mb-2 sm:mb-0 hidden">
                         <label for="user-filter" class="block text-sm font-medium text-gray-700 mb-1">เลือกพนักงาน</label>
                         <select id="user-filter" class="w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </select>
                     </div>
 
-                    <!-- Month Filter (ใช้ทั้ง BA และ Admin) -->
-                    <div class="w-full sm:w-1/2">
+                    <!-- Month Filter (Used by all) -->
+                    <div class="w-full sm:w-1/3">
                         <label for="month-filter" class="block text-sm font-medium text-gray-700 mb-1">เลือกเดือน</label>
                         <select id="month-filter" class="w-full p-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </select>
@@ -115,8 +123,6 @@
                 </div>
             </div>
         </header>
-
-        <!-- ... (ส่วนที่เหลือของ HTML เหมือนเดิมทุกประการ) ... -->
 
         <!-- Monthly Target vs. Sales Comparison -->
         <section id="monthly-summary" class="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -187,9 +193,11 @@
             <div id="modal-user-breakdown" class="mt-4 hidden">
                 <h4 class="text-md font-semibold text-gray-700 mb-2">ยอดขายตามพนักงาน</h4>
                 <div class="max-h-32 overflow-y-auto">
-                    <div class="grid grid-cols-2 gap-2 p-2 bg-gray-50 text-sm font-medium text-gray-600 rounded-t-md sticky top-0 z-10">
+                    <!-- ⚠️ MODIFIED: เพิ่มแสดงเป้าหมายรายคน -->
+                    <div class="grid grid-cols-3 gap-2 p-2 bg-gray-50 text-sm font-medium text-gray-600 rounded-t-md sticky top-0 z-10">
                         <div>พนักงาน</div>
-                        <div class="text-right">ยอด (ลิตร)</div>
+                        <div class="text-center">เป้าหมาย</div>
+                        <div class="text-right">ยอดจริง (ลิตร)</div>
                     </div>
                     <div id="modal-user-breakdown-list"></div>
                 </div>
@@ -212,11 +220,11 @@
     const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwtBzKFI97kxZ0M7cobxG4L9ulAB2wpVH25LqkYaW1MCKOhLegRNhsFRluTc3eGMFas/exec"; // ⬅️ ⚠️ วาง URL ที่ Deploy ใหม่
 
     // --- 0. GLOBAL DATA STORE ---
-    // let currentView = 'ba'; // ⬅️ ⚠️ ลบตัวแปรนี้ออก
     let userRole = "BA"; // ค่าเริ่มต้น
     let teamName = "";
     let allTeamRawData = []; // ข้อมูลดิบที่กรองแล้ว (ของ BA หรือ ของทั้งทีม)
     let allUsersInTeam = []; // ['All Team', 'User A', 'User B']
+    let allTeamsList = []; // ⚠️ NEW: เก็บรายชื่อทีมทั้งหมดสำหรับ SuperAdmin
     let processedDataForDisplay = {}; // ข้อมูลที่ประมวลผลแล้วเพื่อแสดงผล
 
     const today = new Date();
@@ -240,6 +248,9 @@
     const userNameEl = document.getElementById("user-name");
     const userPhoneEl = document.getElementById("user-phone");
     const monthFilter = document.getElementById("month-filter");
+
+    const teamFilterContainer = document.getElementById("team-filter-container"); // ⚠️ NEW
+    const teamFilter = document.getElementById("team-filter"); // ⚠️ NEW
 
     const userFilterContainer = document.getElementById("user-filter-container");
     const userFilter = document.getElementById("user-filter");
@@ -271,15 +282,13 @@
     
     // --- 2. BACKEND CONNECTION & DATA PROCESSING ---
 
-    /**
-     * ⚠️ NEW: ลบการตรวจสอบ URL ออก
-     */
     document.addEventListener("DOMContentLoaded", () => {
         // --- 5. EVENT LISTENERS ---
         loginButton.addEventListener("click", handleLogin);
         logoutButton.addEventListener("click", handleLogout);
         userFilter.addEventListener("change", processAndDisplayData);
         monthFilter.addEventListener("change", handleMonthChange); 
+        teamFilter.addEventListener("change", handleTeamChange); // ⚠️ NEW
         phoneInput.addEventListener("keypress", (event) => {
             if (event.key === "Enter") handleLogin();
         });
@@ -300,17 +309,21 @@
     });
 
     /**
-     * ⚠️ UPDATED: This now uses fetch() and calls the correct API view
+     * ⚠️ UPDATED: This now accepts an optional teamFilter
      */
-    async function fetchDataFromBackend(phoneNo) {
-        if (GOOGLE_APP_SCRIPT_URL === "https://script.google.com/macros/s/AKfycbw9sRrudHqHOpV8E37vyyYsT4uTBrP25Dh560SuoAVmmOedGT1s3cl-x3UnEA9co6vA/exec") {
+    async function fetchDataFromBackend(phoneNo, teamFilterValue = null) {
+        if (GOOGLE_APP_SCRIPT_URL === "") {
             loginError.textContent = "กรุณาตั้งค่า GOOGLE_APP_SCRIPT_URL ให้ถูกต้อง";
             loginError.classList.remove("hidden");
             return null;
         }
 
-        // ⚠️ NEW: ลบ ?view=${currentView} ออก (GAS API จะจัดการ View เอง)
-        const url = `${GOOGLE_APP_SCRIPT_URL}?phone=${phoneNo}&cachebust=${new Date().getTime()}`;
+        let url = `${GOOGLE_APP_SCRIPT_URL}?phone=${phoneNo}&cachebust=${new Date().getTime()}`;
+        
+        // ⚠️ NEW: เพิ่ม teamFilter ใน URL ถ้ามี
+        if (teamFilterValue) {
+             url += `&teamFilter=${encodeURIComponent(teamFilterValue)}`;
+        }
         
         try {
             const response = await fetch(url, {
@@ -323,7 +336,7 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            const data = await response.json(); // ⬅️ ⚠️ NEW: คาดหวัง Object เสมอ
+            const data = await response.json(); 
             
             if (data.error) {
                 throw new Error(data.error);
@@ -331,11 +344,16 @@
             
             // ⚠️ NEW: ตรวจสอบ data.userData (รวมถึง BA ด้วย)
             if (!data.userData || data.userData.length === 0) {
-                 throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
+                 // ถ้าเป็น Admin/Supervisor ที่ไม่มีข้อมูล อาจจะต้องให้ผ่านไป
+                 if (data.role === "Supervisor" || data.role === "SuperAdmin") {
+                    return data; // Admin/Supervisor อาจจะดึงข้อมูลทีมที่ไม่มีข้อมูลได้
+                 } else {
+                    throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
+                 }
             }
             
             loginError.classList.add("hidden");
-            return data; // ⬅️ ⚠️ NEW: Return object { role, teamName, userData }
+            return data; 
 
         } catch (error) {
             console.error("Fetch error:", error.message);
@@ -429,7 +447,7 @@
     // --- 3. LOGIN/LOGOUT & FILTER FUNCTIONS ---
     
     /**
-     * ⚠️ NEW: ฟังก์ชัน Login ที่รองรับทั้ง BA และ Admin
+     * ⚠️ UPDATED: Login function to handle teamFilter for SuperAdmin on initial load
      */
     async function handleLogin() {
         const phoneNo = phoneInput.value;
@@ -442,7 +460,8 @@
         loginButton.classList.add("hidden");
         loginError.classList.add("hidden");
         loadingSpinner.classList.remove("hidden");
-
+        
+        // ⚠️ NEW: ดึงข้อมูลเริ่มต้นโดยไม่มี teamFilter (API จะจัดการ Role ให้)
         const data = await fetchDataFromBackend(phoneNo);
 
         loadingSpinner.classList.add("hidden");
@@ -455,28 +474,41 @@
         sessionStorage.setItem("userPhone", phoneNo);
         userPhoneEl.textContent = `เบอร์โทร: ${phoneNo}`;
 
-        // ⚠️ NEW: ตรวจสอบ Role จาก Backend
-        // 'data' is an Object: { role, teamName, userData }
-        userRole = data.role; // "BA", "Supervisor", "SuperAdmin"
+        // เก็บข้อมูลจาก Backend
+        userRole = data.role; 
         teamName = data.teamName; 
-        allTeamRawData = data.userData; // This is the array
+        allTeamRawData = data.userData; 
         
-        // ประมวลผลข้อมูลดิบ (เหมือนกันทั้ง BA และ Admin)
-        processedDataForDisplay = processRawData(allTeamRawData);
+        // ⚠️ NEW: เก็บ teamsList
+        allTeamsList = data.teamsList || []; 
 
-        if (userRole === "Supervisor" || userRole === "SuperAdmin") {
-            // --- ADMIN/SUPERVISOR LOGIN LOGIC ---
-            appTitle.textContent = "TAP: Admin Dashboard";
+        if (userRole === "SuperAdmin") {
+            // --- SUPERADMIN LOGIN LOGIC ---
+            appTitle.textContent = "TAP: SuperAdmin Dashboard";
+            loginTitle.textContent = "เข้าสู่ระบบ (ผู้ดูแลสูงสุด)";
+            document.title = "SuperAdmin Dashboard";
+            
+            // ⚠️ NEW: Populate Team Filter
+            populateTeamFilter(allTeamsList);
+            teamFilterContainer.classList.remove("hidden"); 
+            
+            // ใช้ค่าเริ่มต้น (All Company)
+            teamFilter.value = "All Company"; 
+            
+            // แสดง User Filter ด้วย
+            userFilterContainer.classList.remove("hidden");
+            processAndDisplayData();
+
+        } else if (userRole === "Supervisor") {
+             // --- SUPERVISOR LOGIN LOGIC ---
+            appTitle.textContent = "TAP: Supervisor Dashboard";
             loginTitle.textContent = "เข้าสู่ระบบ (ผู้ดูแล)";
-            document.title = "Admin Dashboard";
+            document.title = "Supervisor Dashboard";
+
+            teamFilterContainer.classList.add("hidden"); // ซ่อน Team Filter
+            userFilterContainer.classList.remove("hidden"); 
             
-            // ⚠️ ต้องมีคอลัมน์ 'user'
-            allUsersInTeam = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").sort())]; 
-            populateUserFilter(allUsersInTeam);
-            userFilterContainer.classList.remove("hidden"); // <-- ⚠️ แสดงฟิลเตอร์
-            userFilter.value = "All Team"; 
-            
-            processAndDisplayData(); // This is the admin-specific function
+            processAndDisplayData(); // ใช้ข้อมูลทีมที่ถูกกรองมาแล้ว
 
         } else {
             // --- BA LOGIN LOGIC ---
@@ -484,9 +516,9 @@
             loginTitle.textContent = "เข้าสู่ระบบ";
             document.title = "BA Sales Report";
 
-            userFilterContainer.classList.add("hidden"); // <-- ⚠️ ซ่อนฟิลเตอร์
+            teamFilterContainer.classList.add("hidden"); // ซ่อน Team Filter
+            userFilterContainer.classList.add("hidden"); // ซ่อน User Filter
             
-            // BA logic
             userNameEl.textContent = processedDataForDisplay.userName; // Set name
             
             populateMonthFilter(processedDataForDisplay.salesByMonth);
@@ -505,31 +537,92 @@
     }
 
     /**
-     * (ฟังก์ชันสำหรับ Admin)
+     * ⚠️ NEW: Handle Team Change for SuperAdmin
+     */
+    async function handleTeamChange() {
+        const selectedTeam = teamFilter.value;
+        const phoneNo = sessionStorage.getItem("userPhone");
+        
+        if (userRole === "SuperAdmin") {
+             loginButton.classList.add("hidden");
+             loadingSpinner.classList.remove("hidden");
+             
+             // ⚠️ NEW: Fetch data again using the new team filter
+             const data = await fetchDataFromBackend(phoneNo, selectedTeam);
+             
+             loadingSpinner.classList.remove("hidden");
+             loginButton.classList.remove("hidden");
+             
+             if (data) {
+                teamName = data.teamName;
+                allTeamRawData = data.userData;
+                // หลังจากดึงข้อมูลใหม่แล้ว ให้ไปที่ processAndDisplayData() เพื่อกรอง BA และแสดงผล
+                processAndDisplayData();
+             }
+        }
+    }
+    
+    /**
+     * ⚠️ NEW: Populate Team Filter
+     */
+    function populateTeamFilter(teams) {
+        teamFilter.innerHTML = "";
+        
+        // เพิ่มตัวเลือก "All Company" เป็นตัวแรก
+        const allOption = document.createElement("option");
+        allOption.value = "All Company";
+        allOption.textContent = "All Company (ทุกทีม)";
+        teamFilter.appendChild(allOption);
+
+        teams.forEach(team => {
+            const option = document.createElement("option");
+            option.value = team;
+            option.textContent = team;
+            teamFilter.appendChild(option);
+        });
+    }
+
+    /**
+     * (ฟังก์ชันสำหรับ Admin/Supervisor)
      */
     function populateUserFilter(users) {
         userFilter.innerHTML = "";
         users.forEach(user => {
             const option = document.createElement("option");
             option.value = user;
-            option.textContent = (user === "All Team") ? `${teamName} (ทีมทั้งหมด)` : user; // แสดงชื่อทีม
+            // ⚠️ MODIFIED: ปรับให้แสดงชื่อทีมที่ถูกต้อง (หรือ All Team)
+            option.textContent = (user === "All Team") ? `ทีมทั้งหมด (${teamName})` : user; 
             userFilter.appendChild(option);
         });
     }
 
     /**
-     * (ฟังก์ชันสำหรับ Admin)
+     * (ฟังก์ชันสำหรับ Admin/Supervisor)
      */
     function processAndDisplayData() {
         const selectedUser = userFilter.value;
         let dataToProcess;
 
+        // ⚠️ NEW: คำนวณรายชื่อ User ใหม่ทุกครั้งที่เปลี่ยนทีม/User
+        allUsersInTeam = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").sort())]; 
+        populateUserFilter(allUsersInTeam);
+        
         if (selectedUser === "All Team") {
             dataToProcess = allTeamRawData;
             userNameEl.textContent = `${teamName} (รวม)`;
         } else {
-            dataToProcess = allTeamRawData.filter(r => (r.user || "Unknown") === selectedUser);
-            userNameEl.textContent = selectedUser;
+            // พยายามเลือก user เดิม หากไม่มี user เดิม ให้เลือก "All Team"
+            const userExists = allUsersInTeam.includes(selectedUser);
+            const userToFilter = userExists ? selectedUser : "All Team";
+            userFilter.value = userToFilter;
+            
+            if (userToFilter === "All Team") {
+                 dataToProcess = allTeamRawData;
+                 userNameEl.textContent = `${teamName} (รวม)`;
+            } else {
+                 dataToProcess = allTeamRawData.filter(r => (r.user || "Unknown") === userToFilter);
+                 userNameEl.textContent = userToFilter;
+            }
         }
 
         processedDataForDisplay = processRawData(dataToProcess);
@@ -555,7 +648,8 @@
         allTeamRawData = [];
         processedDataForDisplay = {};
         userRole = "BA"; // Reset role
-        userFilterContainer.classList.add("hidden"); // <-- ซ่อนฟิลเตอร์
+        teamFilterContainer.classList.add("hidden"); // ซ่อน Team Filter
+        userFilterContainer.classList.add("hidden"); // ซ่อน User Filter
 
         // ⚠️ NEW: Reset titles
         appTitle.textContent = "TAP: Sales Report";
@@ -664,8 +758,10 @@
         let individualDailyTarget = dailyTarget; // ค่า default
         if (userRole !== "BA" && userFilter.value === "All Team") {
             // allUsersInTeam มี "All Team" รวมอยู่ด้วย, จึงต้อง -1 (ถ้ามี user คนอื่นอยู่)
+            // allUsersInTeam ถูกคำนวณใหม่ใน processAndDisplayData() ทุกครั้งที่เปลี่ยนทีม
             const totalUsersInTeam = allUsersInTeam.length > 1 ? allUsersInTeam.length - 1 : 1;
             if (totalUsersInTeam > 0) {
+                // Calculation: Monthly Target / (Days in Month * Number of Users)
                 individualDailyTarget = monthlyTarget / (daysInMonth * totalUsersInTeam);
             } else {
                 individualDailyTarget = dailyTarget;
@@ -738,7 +834,6 @@
 
     /**
      * ⚠️ UPDATED: Opens modal and shows user breakdown (ถ้าเป็น Admin)
-     * ⚠️ MODIFIED: รับ individualDailyTarget
      */
     function openModal(dayData, dailyTarget, individualDailyTarget) {
         const actualLiters = dayData.totalLiters;
@@ -763,6 +858,10 @@
         if (userRole !== "BA" && selectedUser === "All Team" && dayData.salesByUser.size > 0) {
             modalUserBreakdownEl.classList.remove("hidden");
             const sortedUsers = Array.from(dayData.salesByUser.entries()).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
+            
+            // ⚠️ NEW: แสดงเป้าหมายรายคนใน Header ของ Modal
+            const individualTargetFormatted = formatLiters(individualDailyTarget);
+
             for (const [user, userData] of sortedUsers) {
                 // --- ⚠️ NEW: Bar Calculation ---
                 const userActual = userData.totalLiters;
@@ -771,12 +870,13 @@
                 const barColor = userPercent < 50 ? '#ef4444' : (userPercent < 100 ? '#f59e0b' : '#22c55e');
                 // --- END NEW ---
 
-                // --- ⚠️ MODIFIED: New HTML structure ---
+                // --- ⚠️ MODIFIED: New HTML structure for better KPI display ---
                 modalUserBreakdownListEl.innerHTML += `
-                    <div class="grid grid-cols-2 gap-x-2 pb-2 mb-2 border-b border-gray-100">
-                        <div class="text-sm text-gray-700">${user}</div>
+                    <div class="grid grid-cols-3 gap-x-2 pb-2 mb-2 border-b border-gray-100 items-center">
+                        <div class="text-sm text-gray-700 font-medium">${user}</div>
+                        <div class="text-sm text-center text-gray-500">${individualTargetFormatted}</div>
                         <div class="text-sm text-right font-semibold text-gray-800">${formatLiters(userData.totalLiters)}</div>
-                        <div class="col-span-2">
+                        <div class="col-span-3">
                             <div class="individual-kpi-bar-background">
                                 <div class="individual-kpi-bar-fill" style="width: ${userPercent}%; background-color: ${barColor};"></div>
                             </div>
