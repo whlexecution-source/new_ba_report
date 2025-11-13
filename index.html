@@ -209,116 +209,110 @@
     <!-- Internal JavaScript -->
     <script>
     // --- ⚠️ NEW: ใส่ URL ของ API ที่คุณได้จากขั้นตอนที่ 1 ---
-    const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw9sRrudHqHOpV8E37vyyYsT4uTBrP25Dh560SuoAVmmOedGT1s3cl-x3UnEA9co6vA/exec"; // ⬅️ ⚠️ วาง URL ที่ Deploy ใหม่
+    // --- ⚠️ URL ของ Google Apps Script ---
+const GOOGLE_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw9sRrudHqHOpV8E37vyyYsT4uTBrP25Dh560SuoAVmmOedGT1s3cl-x3UnEA9co6vA/exec";
 
-    // --- 0. GLOBAL DATA STORE ---
-    // let currentView = 'ba'; // ⬅️ ⚠️ ลบตัวแปรนี้ออก
-    let userRole = "BA"; // ค่าเริ่มต้น
-    let teamName = "";
-    let allTeamRawData = []; // ข้อมูลดิบที่กรองแล้ว (ของ BA หรือ ของทั้งทีม)
-    let allUsersInTeam = []; // ['All Team', 'User A', 'User B']
-    let processedDataForDisplay = {}; // ข้อมูลที่ประมวลผลแล้วเพื่อแสดงผล
+// --- 0. GLOBAL DATA STORE ---
+let currentView = 'ba'; // ⚠️ ต้องประกาศ! 'ba' or 'admin'
+let userRole = "BA";
+let teamName = "";
+let allTeamRawData = [];
+let allUsersInTeam = [];
+let processedDataForDisplay = {};
 
-    const today = new Date();
-    const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-    const todayDate = todayUTC.getUTCDate();
-    const todayMonth = todayUTC.getUTCMonth(); 
-    const todayYear = todayUTC.getUTCFullYear();
+const today = new Date();
+const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
+const todayDate = todayUTC.getUTCDate();
+const todayMonth = todayUTC.getUTCMonth(); 
+const todayYear = todayUTC.getUTCFullYear();
+
+// --- 1. DOM ELEMENTS ---
+const loginView = document.getElementById("login-view");
+const dashboardView = document.getElementById("dashboard-view");
+const phoneInput = document.getElementById("phone-input");
+const loginButton = document.getElementById("login-button");
+const logoutButton = document.getElementById("logout-button");
+const loadingSpinner = document.getElementById("loading-spinner");
+const loginError = document.getElementById("login-error");
+
+const appTitle = document.getElementById("app-title");
+const loginTitle = document.getElementById("login-title");
+
+const userNameEl = document.getElementById("user-name");
+const userPhoneEl = document.getElementById("user-phone");
+const monthFilter = document.getElementById("month-filter");
+
+const userFilterContainer = document.getElementById("user-filter-container");
+const userFilter = document.getElementById("user-filter");
+
+const currentLitersEl = document.getElementById("current-liters-text");
+const litersTargetEl = document.getElementById("liters-target-text");
+const progressBarEl = document.getElementById("progress-bar");
+const progressPercentEl = document.getElementById("progress-percent-text");
+
+const calendarGridEl = document.getElementById("calendar-grid");
+const skuSummaryListEl = document.getElementById("sku-summary-list");
+
+const modalEl = document.getElementById("details-modal");
+const modalContentEl = document.getElementById("modal-content");
+const modalTitleEl = document.getElementById("modal-title");
+const modalSkuDetailsContainer = document.getElementById("modal-sku-details-container");
+const modalSkuHeader = document.getElementById("modal-sku-header");
+const closeModalBtn = document.getElementById("close-modal-button");
+
+const modalDailyActualEl = document.getElementById("modal-daily-actual");
+const modalDailyTargetEl = document.getElementById("modal-daily-target");
+const modalDailyKpiBarEl = document.getElementById("modal-daily-kpi-bar");
+const modalDailyPercentEl = document.getElementById("modal-daily-percent");
+
+const modalUserBreakdownEl = document.getElementById("modal-user-breakdown");
+const modalUserBreakdownListEl = document.getElementById("modal-user-breakdown-list");
+
+const monthlyTarget = 744;
+
+// --- 2. DOMContentLoaded ---
+document.addEventListener("DOMContentLoaded", () => {
+    // ⚠️ ตั้งค่า currentView ตาม URL
+    const path = window.location.pathname;
     
-    // --- 1. DOM ELEMENTS ---
-    const loginView = document.getElementById("login-view");
-    const dashboardView = document.getElementById("dashboard-view");
-    const phoneInput = document.getElementById("phone-input");
-    const loginButton = document.getElementById("login-button");
-    const logoutButton = document.getElementById("logout-button");
-    const loadingSpinner = document.getElementById("loading-spinner");
-    const loginError = document.getElementById("login-error");
-
-    const appTitle = document.getElementById("app-title");
-    const loginTitle = document.getElementById("login-title");
-
-    const userNameEl = document.getElementById("user-name");
-    const userPhoneEl = document.getElementById("user-phone");
-    const monthFilter = document.getElementById("month-filter");
-
-    const userFilterContainer = document.getElementById("user-filter-container");
-    const userFilter = document.getElementById("user-filter");
-
-    const currentLitersEl = document.getElementById("current-liters-text");
-    const litersTargetEl = document.getElementById("liters-target-text");
-    const progressBarEl = document.getElementById("progress-bar");
-    const progressPercentEl = document.getElementById("progress-percent-text");
-
-    const calendarGridEl = document.getElementById("calendar-grid");
-    const skuSummaryListEl = document.getElementById("sku-summary-list");
-
-    const modalEl = document.getElementById("details-modal");
-    const modalContentEl = document.getElementById("modal-content");
-    const modalTitleEl = document.getElementById("modal-title");
-    const modalSkuDetailsContainer = document.getElementById("modal-sku-details-container");
-    const modalSkuHeader = document.getElementById("modal-sku-header");
-    const closeModalBtn = document.getElementById("close-modal-button");
-
-    const modalDailyActualEl = document.getElementById("modal-daily-actual");
-    const modalDailyTargetEl = document.getElementById("modal-daily-target");
-    const modalDailyKpiBarEl = document.getElementById("modal-daily-kpi-bar");
-    const modalDailyPercentEl = document.getElementById("modal-daily-percent");
-
-    const modalUserBreakdownEl = document.getElementById("modal-user-breakdown");
-    const modalUserBreakdownListEl = document.getElementById("modal-user-breakdown-list");
-    
-    const monthlyTarget = 744; 
-    
-    // --- 2. BACKEND CONNECTION & DATA PROCESSING ---
-
-    /**
-     * ⚠️ NEW: ลบการตรวจสอบ URL ออก
-     */
-    document.addEventListener("DOMContentLoaded", () => {
-        // --- 5. EVENT LISTENERS ---
-        loginButton.addEventListener("click", handleLogin);
-        logoutButton.addEventListener("click", handleLogout);
-        userFilter.addEventListener("change", processAndDisplayData);
-        monthFilter.addEventListener("change", handleMonthChange); 
-        phoneInput.addEventListener("keypress", (event) => {
-            if (event.key === "Enter") handleLogin();
-        });
-        closeModalBtn.addEventListener("click", closeModal);
-        modalEl.addEventListener("click", (event) => {
-            if (event.target === modalEl) closeModal();
-        });
-        document.addEventListener("keydown", (event) => {
-            if (event.key === "Escape" && !modalEl.classList.contains("hidden")) closeModal();
-        });
-
-        // --- 6. CHECK SESSION ---
-        const storedPhone = sessionStorage.getItem("userPhone");
-        if (storedPhone) {
-            phoneInput.value = storedPhone;
-            handleLogin();
-        }
-    });
-
-    /**
-     * ⚠️ UPDATED: This now uses fetch() and calls the correct API view
-     */
-   /**
- * ⚠️ แทนที่ฟังก์ชัน fetchDataFromBackend() ด้วยโค้ดนี้ทั้งหมด
- * วิธีนี้ใช้ iframe + postMessage แทน fetch เพื่อหลีกเลี่ยง CORS
- * 
- * วิธีการใช้งาน:
- * 1. ค้นหา function fetchDataFromBackend ในไฟล์ HTML
- * 2. ลบ function เดิมทิ้งทั้งหมด
- * 3. Paste function นี้แทน
- */
-async function fetchDataFromBackend(phoneNo) {
-    if (GOOGLE_APP_SCRIPT_URL === "YOUR_NEW_WEB_APP_URL_HERE") {
-        loginError.textContent = "กรุณาตั้งค่า GOOGLE_APP_SCRIPT_URL ในโค้ด HTML";
-        loginError.classList.remove("hidden");
-        return null;
+    if (path.includes('/admin')) {
+        currentView = 'admin';
+        appTitle.textContent = "TAP: Admin Dashboard";
+        loginTitle.textContent = "เข้าสู่ระบบ (ผู้ดูแล)";
+        document.title = "Admin Dashboard";
+    } else {
+        currentView = 'ba';
+        appTitle.textContent = "TAP: BA Sales Report";
+        loginTitle.textContent = "เข้าสู่ระบบ";
+        document.title = "BA Sales Report";
     }
 
-    // สร้าง URL
+    // Event Listeners
+    loginButton.addEventListener("click", handleLogin);
+    logoutButton.addEventListener("click", handleLogout);
+    userFilter.addEventListener("change", processAndDisplayData);
+    monthFilter.addEventListener("change", handleMonthChange); 
+    phoneInput.addEventListener("keypress", (event) => {
+        if (event.key === "Enter") handleLogin();
+    });
+    closeModalBtn.addEventListener("click", closeModal);
+    modalEl.addEventListener("click", (event) => {
+        if (event.target === modalEl) closeModal();
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modalEl.classList.contains("hidden")) closeModal();
+    });
+
+    // Check Session
+    const storedPhone = sessionStorage.getItem("userPhone");
+    if (storedPhone) {
+        phoneInput.value = storedPhone;
+        handleLogin();
+    }
+});
+
+// --- 3. FETCH DATA (ใช้ iframe + postMessage) ---
+async function fetchDataFromBackend(phoneNo) {
     const params = new URLSearchParams({
         view: currentView,
         phone: phoneNo,
@@ -328,19 +322,15 @@ async function fetchDataFromBackend(phoneNo) {
     const url = `${GOOGLE_APP_SCRIPT_URL}?${params.toString()}`;
     
     try {
-        // ใช้ iframe + postMessage แทน fetch
         const data = await new Promise((resolve, reject) => {
-            // สร้าง iframe
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
             
-            // ตั้งค่า timeout
             const timeout = setTimeout(() => {
                 cleanup();
                 reject(new Error('Request timeout'));
             }, 30000);
             
-            // ฟังก์ชัน cleanup
             const cleanup = () => {
                 clearTimeout(timeout);
                 window.removeEventListener('message', messageHandler);
@@ -349,9 +339,7 @@ async function fetchDataFromBackend(phoneNo) {
                 }
             };
             
-            // Handler สำหรับรับข้อมูล
             const messageHandler = (event) => {
-                // ตรวจสอบว่าข้อมูลมาจาก Google Apps Script
                 if (event.origin.includes('googleusercontent.com') || 
                     event.origin.includes('script.google.com')) {
                     cleanup();
@@ -359,20 +347,16 @@ async function fetchDataFromBackend(phoneNo) {
                 }
             };
             
-            // ฟัง message
             window.addEventListener('message', messageHandler);
-            
-            // โหลด iframe
             iframe.src = url;
             document.body.appendChild(iframe);
         });
 
-        // ตรวจสอบข้อมูล
         if (data && data.error) {
             throw new Error(data.error);
         }
         
-        // ตรวจสอบข้อมูลที่ได้รับ
+        // ⚠️ ตรวจสอบข้อมูลที่ได้รับ
         if (currentView === 'admin') {
             if (!data || !data.teamData || data.teamData.length === 0) {
                 throw new Error("ไม่พบข้อมูลสำหรับบัญชีนี้");
@@ -394,194 +378,131 @@ async function fetchDataFromBackend(phoneNo) {
     }
 }
 
-    /**
-     * (ฟังก์ชันนี้เหมือนเดิม)
-     */
-    function processRawData(rawData) { 
-        const dailyDataMap = new Map();
-        let userName = "N/A"; 
-        let processedData = []; 
-        
-        for (const row of rawData) {
-            if (row.date_year === undefined || row.date_month === undefined || row.date_day === undefined) {
-                console.warn("Invalid date parts received:", row);
-                continue;
-            }
-
-            const dateObj = new Date(Date.UTC(row.date_year, row.date_month, row.date_day));
-            const year = dateObj.getUTCFullYear();
-            const month = dateObj.getUTCMonth() + 1; // 1-12
-            const dayOfMonth = dateObj.getUTCDate(); // 1-31
-            
-            if (userName === "N/A" && row.user) {
-                userName = row.user;
-            }
-            
-            const monthYear = `${year}-${String(month).padStart(2, '0')}`; 
-
-            const quantity = parseFloat(row.quantity);
-            const totalLiters = parseFloat(row.liter);
-            const litersPerUnit = (quantity > 0) ? (totalLiters / quantity) : 0;
-            
-            const skuData = {
-                sku: row.item,
-                liters: litersPerUnit,
-                units: quantity,
-                totalLitersPerSku: totalLiters
-            };
-
-            processedData.push({ ...row, monthYear });
-
-            if (!dailyDataMap.has(monthYear)) {
-                dailyDataMap.set(monthYear, new Map());
-            }
-            const monthMap = dailyDataMap.get(monthYear);
-
-            if (!monthMap.has(dayOfMonth)) {
-                monthMap.set(dayOfMonth, {
-                    day: dayOfMonth,
-                    totalLiters: 0,
-                    skus: [], 
-                    salesByUser: new Map() // <-- ส่วนนี้จะถูกใช้โดย Admin
-                });
-            }
-            
-            const dayData = monthMap.get(dayOfMonth);
-            dayData.skus.push(skuData); 
-            dayData.totalLiters += totalLiters;
-
-            // --- ติดตามยอดขายตาม User (สำหรับ Admin) ---
-            const user = row.user || "Unknown"; // ⚠️ ต้องมีคอลัมน์ 'user'
-            if (!dayData.salesByUser.has(user)) {
-                dayData.salesByUser.set(user, { totalLiters: 0, skus: [] });
-            }
-            const userDayData = dayData.salesByUser.get(user);
-            userDayData.totalLiters += totalLiters;
-            userDayData.skus.push(skuData);
-            // --- จบส่วนของ Admin ---
+// --- 4. PROCESS RAW DATA ---
+function processRawData(rawData) { 
+    const dailyDataMap = new Map();
+    let userName = "N/A"; 
+    let processedData = []; 
+    
+    for (const row of rawData) {
+        if (row.date_year === undefined || row.date_month === undefined || row.date_day === undefined) {
+            console.warn("Invalid date parts received:", row);
+            continue;
         }
 
-        const salesByMonth = {};
-        for (const [monthYear, monthMap] of dailyDataMap.entries()) {
-            salesByMonth[monthYear] = {
-                dailySales: Array.from(monthMap.values()).sort((a, b) => a.day - b.day)
-            };
+        const dateObj = new Date(Date.UTC(row.date_year, row.date_month, row.date_day));
+        const year = dateObj.getUTCFullYear();
+        const month = dateObj.getUTCMonth() + 1;
+        const dayOfMonth = dateObj.getUTCDate();
+        
+        if (userName === "N/A" && row.user) {
+            userName = row.user;
         }
         
-        return {
-            userName: userName, // <
-            rawData: processedData,
-            salesByMonth: salesByMonth
+        const monthYear = `${year}-${String(month).padStart(2, '0')}`; 
+
+        const quantity = parseFloat(row.quantity);
+        const totalLiters = parseFloat(row.liter);
+        const litersPerUnit = (quantity > 0) ? (totalLiters / quantity) : 0;
+        
+        const skuData = {
+            sku: row.item,
+            liters: litersPerUnit,
+            units: quantity,
+            totalLitersPerSku: totalLiters
+        };
+
+        processedData.push({ ...row, monthYear });
+
+        if (!dailyDataMap.has(monthYear)) {
+            dailyDataMap.set(monthYear, new Map());
+        }
+        const monthMap = dailyDataMap.get(monthYear);
+
+        if (!monthMap.has(dayOfMonth)) {
+            monthMap.set(dayOfMonth, {
+                day: dayOfMonth,
+                totalLiters: 0,
+                skus: [], 
+                salesByUser: new Map()
+            });
+        }
+        
+        const dayData = monthMap.get(dayOfMonth);
+        dayData.skus.push(skuData); 
+        dayData.totalLiters += totalLiters;
+
+        const user = row.user || "Unknown";
+        if (!dayData.salesByUser.has(user)) {
+            dayData.salesByUser.set(user, { totalLiters: 0, skus: [] });
+        }
+        const userDayData = dayData.salesByUser.get(user);
+        userDayData.totalLiters += totalLiters;
+        userDayData.skus.push(skuData);
+    }
+
+    const salesByMonth = {};
+    for (const [monthYear, monthMap] of dailyDataMap.entries()) {
+        salesByMonth[monthYear] = {
+            dailySales: Array.from(monthMap.values()).sort((a, b) => a.day - b.day)
         };
     }
-
-    // --- 3. LOGIN/LOGOUT & FILTER FUNCTIONS ---
     
-    /**
-     * ⚠️ NEW: ฟังก์ชัน Login ที่รองรับทั้ง BA และ Admin
-     */
-    async function handleLogin() {
-        const phoneNo = phoneInput.value;
-        if (!phoneNo) {
-            loginError.textContent = "กรุณากรอกเบอร์โทรศัพท์";
-            loginError.classList.remove("hidden");
-            return;
-        }
+    return {
+        userName: userName,
+        rawData: processedData,
+        salesByMonth: salesByMonth
+    };
+}
 
-        loginButton.classList.add("hidden");
-        loginError.classList.add("hidden");
-        loadingSpinner.classList.remove("hidden");
+// --- 5. LOGIN/LOGOUT ---
+async function handleLogin() {
+    const phoneNo = phoneInput.value;
+    if (!phoneNo) {
+        loginError.textContent = "กรุณากรอกเบอร์โทรศัพท์";
+        loginError.classList.remove("hidden");
+        return;
+    }
 
-        const data = await fetchDataFromBackend(phoneNo);
+    loginButton.classList.add("hidden");
+    loginError.classList.add("hidden");
+    loadingSpinner.classList.remove("hidden");
 
-        loadingSpinner.classList.add("hidden");
-        loginButton.classList.remove("hidden");
+    const data = await fetchDataFromBackend(phoneNo);
+
+    loadingSpinner.classList.add("hidden");
+    loginButton.classList.remove("hidden");
+    
+    if (!data) {
+        return;
+    }
+
+    sessionStorage.setItem("userPhone", phoneNo);
+    userPhoneEl.textContent = `เบอร์โทร: ${phoneNo}`;
+
+    if (currentView === 'admin') {
+        // ⚠️ Admin: data = { role, teamName, teamData }
+        userRole = data.role;
+        teamName = data.teamName;
+        allTeamRawData = data.teamData; // ⚠️ ใช้ teamData ไม่ใช่ userData
         
-        if (!data) {
-            return; // Error message already shown by fetchDataFromBackend
-        }
-
-        sessionStorage.setItem("userPhone", phoneNo);
-        userPhoneEl.textContent = `เบอร์โทร: ${phoneNo}`;
-
-        // ⚠️ NEW: ตรวจสอบ Role จาก Backend
-        // 'data' is an Object: { role, teamName, userData }
-        userRole = data.role; // "BA", "Supervisor", "SuperAdmin"
-        teamName = data.teamName; 
-        allTeamRawData = data.userData; // This is the array
+        allUsersInTeam = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").sort())]; 
+        populateUserFilter(allUsersInTeam);
+        userFilterContainer.classList.remove("hidden");
+        userFilter.value = "All Team"; 
         
-        // ประมวลผลข้อมูลดิบ (เหมือนกันทั้ง BA และ Admin)
+        processAndDisplayData();
+
+    } else {
+        // ⚠️ BA: data = [...]
+        userRole = "BA";
+        allTeamRawData = data;
+        
+        userFilterContainer.classList.add("hidden");
+        
         processedDataForDisplay = processRawData(allTeamRawData);
-
-        if (userRole === "Supervisor" || userRole === "SuperAdmin") {
-            // --- ADMIN/SUPERVISOR LOGIN LOGIC ---
-            appTitle.textContent = "TAP: Admin Dashboard";
-            loginTitle.textContent = "เข้าสู่ระบบ (ผู้ดูแล)";
-            document.title = "Admin Dashboard";
-            
-            // ⚠️ ต้องมีคอลัมน์ 'user'
-            allUsersInTeam = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").sort())]; 
-            populateUserFilter(allUsersInTeam);
-            userFilterContainer.classList.remove("hidden"); // <-- ⚠️ แสดงฟิลเตอร์
-            userFilter.value = "All Team"; 
-            
-            processAndDisplayData(); // This is the admin-specific function
-
-        } else {
-            // --- BA LOGIN LOGIC ---
-            appTitle.textContent = "TAP: BA Sales Report";
-            loginTitle.textContent = "เข้าสู่ระบบ";
-            document.title = "BA Sales Report";
-
-            userFilterContainer.classList.add("hidden"); // <-- ⚠️ ซ่อนฟิลเตอร์
-            
-            // BA logic
-            userNameEl.textContent = processedDataForDisplay.userName; // Set name
-            
-            populateMonthFilter(processedDataForDisplay.salesByMonth);
-            const latestMonth = Object.keys(processedDataForDisplay.salesByMonth).sort().pop();
-            
-            if (latestMonth) {
-                monthFilter.value = latestMonth;
-                handleMonthChange();
-            } else {
-                handleMonthChange(); // Handle no data
-            }
-        }
+        userNameEl.textContent = processedDataForDisplay.userName;
         
-        loginView.classList.add("hidden");
-        dashboardView.classList.remove("hidden");
-    }
-
-    /**
-     * (ฟังก์ชันสำหรับ Admin)
-     */
-    function populateUserFilter(users) {
-        userFilter.innerHTML = "";
-        users.forEach(user => {
-            const option = document.createElement("option");
-            option.value = user;
-            option.textContent = (user === "All Team") ? "ทีมทั้งหมด" : user;
-            userFilter.appendChild(option);
-        });
-    }
-
-    /**
-     * (ฟังก์ชันสำหรับ Admin)
-     */
-    function processAndDisplayData() {
-        const selectedUser = userFilter.value;
-        let dataToProcess;
-
-        if (selectedUser === "All Team") {
-            dataToProcess = allTeamRawData;
-            userNameEl.textContent = teamName;
-        } else {
-            dataToProcess = allTeamRawData.filter(r => (r.user || "Unknown") === selectedUser);
-            userNameEl.textContent = selectedUser;
-        }
-
-        processedDataForDisplay = processRawData(dataToProcess);
         populateMonthFilter(processedDataForDisplay.salesByMonth);
         const latestMonth = Object.keys(processedDataForDisplay.salesByMonth).sort().pop();
         
@@ -592,287 +513,302 @@ async function fetchDataFromBackend(phoneNo) {
             handleMonthChange();
         }
     }
+    
+    loginView.classList.add("hidden");
+    dashboardView.classList.remove("hidden");
+}
 
-    function handleLogout() {
-        sessionStorage.removeItem("userPhone");
-        dashboardView.classList.add("hidden");
-        loginView.classList.remove("hidden");
-        phoneInput.value = "";
-        loginError.classList.add("hidden");
-        
-        // ⚠️ NEW: Reset UI
-        allTeamRawData = [];
-        processedDataForDisplay = {};
-        userRole = "BA"; // Reset role
-        userFilterContainer.classList.add("hidden"); // <-- ซ่อนฟิลเตอร์
+function populateUserFilter(users) {
+    userFilter.innerHTML = "";
+    users.forEach(user => {
+        const option = document.createElement("option");
+        option.value = user;
+        option.textContent = (user === "All Team") ? "ทีมทั้งหมด" : user;
+        userFilter.appendChild(option);
+    });
+}
 
-        // ⚠️ NEW: Reset titles
-        appTitle.textContent = "TAP: Sales Report";
-        loginTitle.textContent = "เข้าสู่ระบบ";
-        document.title = "Sales Dashboard";
+function processAndDisplayData() {
+    const selectedUser = userFilter.value;
+    let dataToProcess;
+
+    if (selectedUser === "All Team") {
+        dataToProcess = allTeamRawData;
+        userNameEl.textContent = teamName;
+    } else {
+        dataToProcess = allTeamRawData.filter(r => (r.user || "Unknown") === selectedUser);
+        userNameEl.textContent = selectedUser;
     }
 
-    function populateMonthFilter(salesByMonth) {
-        monthFilter.innerHTML = "";
-        const months = Object.keys(salesByMonth).sort().reverse();
-        const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
-        
-        if (months.length === 0) {
+    processedDataForDisplay = processRawData(dataToProcess);
+    populateMonthFilter(processedDataForDisplay.salesByMonth);
+    const latestMonth = Object.keys(processedDataForDisplay.salesByMonth).sort().pop();
+    
+    if (latestMonth) {
+        monthFilter.value = latestMonth;
+        handleMonthChange();
+    } else {
+        handleMonthChange();
+    }
+}
+
+function handleLogout() {
+    sessionStorage.removeItem("userPhone");
+    dashboardView.classList.add("hidden");
+    loginView.classList.remove("hidden");
+    phoneInput.value = "";
+    loginError.classList.add("hidden");
+    
+    allTeamRawData = [];
+    processedDataForDisplay = {};
+    userRole = "BA";
+    userFilterContainer.classList.add("hidden");
+}
+
+function populateMonthFilter(salesByMonth) {
+    monthFilter.innerHTML = "";
+    const months = Object.keys(salesByMonth).sort().reverse();
+    const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+    
+    if (months.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "ไม่พบข้อมูล";
+        monthFilter.appendChild(option);
+    } else {
+        months.forEach(monthYear => {
+            const [year, month] = monthYear.split('-');
             const option = document.createElement("option");
-            option.value = "";
-            option.textContent = "ไม่พบข้อมูล";
+            option.value = monthYear;
+            option.textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
             monthFilter.appendChild(option);
-        } else {
-            months.forEach(monthYear => {
-                const [year, month] = monthYear.split('-');
-                const option = document.createElement("option");
-                option.value = monthYear;
-                option.textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
-                monthFilter.appendChild(option);
-            });
+        });
+    }
+}
+
+function handleMonthChange() {
+    const selectedMonthYear = monthFilter.value;
+
+    if (!selectedMonthYear || !processedDataForDisplay.salesByMonth || !processedDataForDisplay.salesByMonth[selectedMonthYear]) {
+        const totalMonthlyLiters = loadDashboard([]);
+        generateCalendar(todayYear, todayMonth, [], totalMonthlyLiters);
+        loadSkuSummary(new Map());
+        return;
+    }
+
+    const monthData = processedDataForDisplay.salesByMonth[selectedMonthYear];
+    const [year, month] = selectedMonthYear.split('-').map(Number);
+    
+    const monthlySkuSummary = new Map();
+    if (monthData.dailySales) {
+        for (const day of monthData.dailySales) {
+            for (const skuEntry of day.skus) {
+                const key = skuEntry.sku;
+                if (!monthlySkuSummary.has(key)) {
+                    monthlySkuSummary.set(key, { totalQuantity: 0, totalLiters: 0 });
+                }
+                const summary = monthlySkuSummary.get(key);
+                summary.totalQuantity += skuEntry.units;
+                summary.totalLiters += skuEntry.totalLitersPerSku;
+            }
         }
+    }
+
+    const totalMonthlyLiters = loadDashboard(monthData.dailySales);
+    loadSkuSummary(monthlySkuSummary);
+    generateCalendar(year, month - 1, monthData.dailySales, totalMonthlyLiters);
+}
+
+// --- 6. DASHBOARD FUNCTIONS ---
+function formatLiters(number) {
+    return new Intl.NumberFormat('th-TH', {
+        minimumFractionDigits: 0, maximumFractionDigits: 1
+    }).format(number) + ' ล.';
+}
+
+function loadDashboard(dailySalesData) {
+    const totalMonthlyLiters = dailySalesData.reduce((sum, day) => sum + day.totalLiters, 0);
+    let progressPercent = (totalMonthlyLiters / monthlyTarget) * 100;
+    progressPercent = Math.min(progressPercent, 100);
+    currentLitersEl.textContent = `ยอดจริง: ${formatLiters(totalMonthlyLiters)}`;
+    litersTargetEl.textContent = `เป้าหมาย: ${formatLiters(monthlyTarget)}`;
+    progressBarEl.style.width = `${progressPercent}%`;
+    progressPercentEl.textContent = `${progressPercent.toFixed(1)}% ของเป้าหมาย`;
+    return totalMonthlyLiters;
+}
+
+function loadSkuSummary(monthlySkuSummary) {
+    skuSummaryListEl.innerHTML = "";
+    if (monthlySkuSummary.size === 0) {
+        skuSummaryListEl.innerHTML = `<div class="text-center text-gray-500 p-4">ไม่มีข้อมูล SKU สำหรับเดือนนี้</div>`;
+    } else {
+        const sortedSummary = Array.from(monthlySkuSummary.entries()).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
+        for (const [sku, summary] of sortedSummary) {
+            skuSummaryListEl.innerHTML += `
+                <div class="sku-summary-item grid grid-cols-3 gap-4 p-2 border-b border-gray-100">
+                    <div class="text-left font-medium text-gray-700">${sku}</div>
+                    <div class="text-center text-gray-600">${summary.totalQuantity.toLocaleString('th-TH')}</div>
+                    <div class="text-right font-semibold text-gray-800">${summary.totalLiters.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 1})}</div>
+                </div>`;
+        }
+    }
+}
+
+function generateCalendar(year, month, salesDataForMonth, totalMonthlyLiters) {
+    calendarGridEl.innerHTML = "";
+    const salesMap = new Map(salesDataForMonth.map(day => [day.day, day]));
+    const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
+    const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    const dailyTarget = (daysInMonth > 0) ? (monthlyTarget / daysInMonth) : 0;
+    
+    let individualDailyTarget = dailyTarget;
+    if (userRole !== "BA" && allUsersInTeam.length > 1) {
+        const totalUsersInTeam = allUsersInTeam.length > 1 ? allUsersInTeam.length - 1 : 1;
+        individualDailyTarget = dailyTarget / totalUsersInTeam;
     }
     
-    function handleMonthChange() {
-        const selectedMonthYear = monthFilter.value;
+    const remainingTarget = Math.max(0, monthlyTarget - totalMonthlyLiters);
+    let remainingWorkingDays = 0;
 
-        if (!selectedMonthYear || !processedDataForDisplay.salesByMonth || !processedDataForDisplay.salesByMonth[selectedMonthYear]) {
-            const totalMonthlyLiters = loadDashboard([]);
-            generateCalendar(todayYear, todayMonth, [], totalMonthlyLiters);
-            loadSkuSummary(new Map());
-            return;
+    if (year > todayYear || (year === todayYear && month > todayMonth)) {
+        remainingWorkingDays = daysInMonth;
+    } else if (year === todayYear && month === todayMonth) {
+        for (let d = todayDate + 1; d <= daysInMonth; d++) remainingWorkingDays++;
+    }
+    const estimatedDailyTarget = (remainingWorkingDays > 0) ? (remainingTarget / remainingWorkingDays) : 0;
+
+    for (let i = 0; i < firstDayOfMonth; i++) {
+        calendarGridEl.innerHTML += `<div class="calendar-day calendar-day-empty"></div>`;
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        const dayCell = document.createElement("div");
+        const dayData = salesMap.get(i);
+        const dayNumberSpan = document.createElement("span");
+        dayNumberSpan.className = "day-number";
+        dayNumberSpan.textContent = i;
+
+        if (i === todayDate && month === todayMonth && year === todayYear) {
+            dayNumberSpan.classList.add("day-number-today");
         }
+        const isPastOrToday = (year < todayYear) || (year === todayYear && month < todayMonth) || (year === todayYear && month === todayMonth && i <= todayDate);
 
-        const monthData = processedDataForDisplay.salesByMonth[selectedMonthYear];
-        const [year, month] = selectedMonthYear.split('-').map(Number);
-        
-        const monthlySkuSummary = new Map();
-        if (monthData.dailySales) {
-            for (const day of monthData.dailySales) {
-                for (const skuEntry of day.skus) {
-                    const key = skuEntry.sku;
-                    if (!monthlySkuSummary.has(key)) {
-                        monthlySkuSummary.set(key, { totalQuantity: 0, totalLiters: 0 });
-                    }
-                    const summary = monthlySkuSummary.get(key);
-                    summary.totalQuantity += skuEntry.units;
-                    summary.totalLiters += skuEntry.totalLitersPerSku;
-                }
-            }
-        }
-
-        const totalMonthlyLiters = loadDashboard(monthData.dailySales);
-        loadSkuSummary(monthlySkuSummary);
-        generateCalendar(year, month - 1, monthData.dailySales, totalMonthlyLiters);
-    }
-    
-    // --- 4. DASHBOARD FUNCTIONS (ฟังก์ชันส่วนนี้เหมือนเดิม) ---
-
-    function formatLiters(number) {
-        return new Intl.NumberFormat('th-TH', {
-            minimumFractionDigits: 0, maximumFractionDigits: 1
-        }).format(number) + ' ล.';
-    }
-
-    function loadDashboard(dailySalesData) {
-        const totalMonthlyLiters = dailySalesData.reduce((sum, day) => sum + day.totalLiters, 0);
-        let progressPercent = (totalMonthlyLiters / monthlyTarget) * 100;
-        progressPercent = Math.min(progressPercent, 100);
-        currentLitersEl.textContent = `ยอดจริง: ${formatLiters(totalMonthlyLiters)}`;
-        litersTargetEl.textContent = `เป้าหมาย: ${formatLiters(monthlyTarget)}`;
-        progressBarEl.style.width = `${progressPercent}%`;
-        progressPercentEl.textContent = `${progressPercent.toFixed(1)}% ของเป้าหมาย`;
-        return totalMonthlyLiters;
-    }
-
-    function loadSkuSummary(monthlySkuSummary) {
-        skuSummaryListEl.innerHTML = "";
-        if (monthlySkuSummary.size === 0) {
-            skuSummaryListEl.innerHTML = `<div class="text-center text-gray-500 p-4">ไม่มีข้อมูล SKU สำหรับเดือนนี้</div>`;
+        if (dayData) {
+            dayCell.className = "calendar-day calendar-day-data";
+            dayCell.appendChild(dayNumberSpan);
+            dayCell.innerHTML += `<span class="day-sales">${new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(dayData.totalLiters)}</span>`;
+            
+            const kpiPercent = (dailyTarget > 0) ? Math.min((dayData.totalLiters / dailyTarget) * 100, 100) : 100;
+            const kpiBg = document.createElement("div");
+            kpiBg.className = "daily-kpi-bar-background";
+            const kpiFill = document.createElement("div");
+            kpiFill.className = "daily-kpi-bar-fill";
+            kpiFill.style.width = kpiPercent + "%";
+            if (kpiPercent < 50) kpiFill.style.backgroundColor = "#ef4444";
+            else if (kpiPercent < 100) kpiFill.style.backgroundColor = "#f59e0b";
+            else kpiFill.style.backgroundColor = "#22c55e";
+            kpiBg.appendChild(kpiFill);
+            dayCell.appendChild(kpiBg);
+            dayCell.addEventListener("click", () => openModal(dayData, dailyTarget, individualDailyTarget));
+        } else if (isPastOrToday) {
+            dayCell.className = "calendar-day calendar-day-placeholder";
+            dayCell.appendChild(dayNumberSpan);
+            dayCell.innerHTML += `<span class="day-sales text-gray-400">0</span>`;
         } else {
-            const sortedSummary = Array.from(monthlySkuSummary.entries()).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
-            for (const [sku, summary] of sortedSummary) {
-                skuSummaryListEl.innerHTML += `
-                    <div class="sku-summary-item grid grid-cols-3 gap-4 p-2 border-b border-gray-100">
-                        <div class="text-left font-medium text-gray-700">${sku}</div>
-                        <div class="text-center text-gray-600">${summary.totalQuantity.toLocaleString('th-TH')}</div>
-                        <div class="text-right font-semibold text-gray-800">${summary.totalLiters.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 1})}</div>
-                    </div>`;
+            dayCell.className = "calendar-day calendar-day-placeholder";
+            dayCell.appendChild(dayNumberSpan);
+            let estimateText = "-";
+            if (estimatedDailyTarget > 0) {
+                estimateText = `~${new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(estimatedDailyTarget)}`;
+            } else if (remainingTarget <= 0) {
+                estimateText = "✓";
             }
+            dayCell.innerHTML += `<span class="day-sales text-gray-400 font-normal">${estimateText}</span>`;
         }
+        calendarGridEl.appendChild(dayCell);
     }
+}
 
-    function generateCalendar(year, month, salesDataForMonth, totalMonthlyLiters) {
-        calendarGridEl.innerHTML = "";
-        const salesMap = new Map(salesDataForMonth.map(day => [day.day, day]));
-        const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
-        const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-        const dailyTarget = (daysInMonth > 0) ? (monthlyTarget / daysInMonth) : 0;
-        
-        // --- ⚠️ NEW: คำนวณเป้าหมายรายคน (เฉพาะโหมด Admin) ---
-        let individualDailyTarget = dailyTarget; // ค่า default
-        if (userRole !== "BA" && allUsersInTeam.length > 1) {
-            // allUsersInTeam มี "All Team" รวมอยู่ด้วย, จึงต้อง -1
-            const totalUsersInTeam = allUsersInTeam.length > 1 ? allUsersInTeam.length - 1 : 1;
-            individualDailyTarget = dailyTarget / totalUsersInTeam;
-        }
-        // --- END NEW ---
-        
-        const remainingTarget = Math.max(0, monthlyTarget - totalMonthlyLiters);
-        let remainingWorkingDays = 0;
+function openModal(dayData, dailyTarget, individualDailyTarget) {
+    const actualLiters = dayData.totalLiters;
+    const percentAchieved = (dailyTarget > 0) ? (actualLiters / dailyTarget) * 100 : (actualLiters > 0 ? 100 : 0);
+    const kpiPercent = Math.min(percentAchieved, 100);
 
-        if (year > todayYear || (year === todayYear && month > todayMonth)) {
-            remainingWorkingDays = daysInMonth;
-        } else if (year === todayYear && month === todayMonth) {
-            for (let d = todayDate + 1; d <= daysInMonth; d++) remainingWorkingDays++;
-        }
-        const estimatedDailyTarget = (remainingWorkingDays > 0) ? (remainingTarget / remainingWorkingDays) : 0;
+    modalTitleEl.textContent = `สรุปยอดขาย - วันที่ ${dayData.day} ${monthFilter.options[monthFilter.selectedIndex].text}`;
+    modalDailyActualEl.textContent = `ยอดจริง: ${formatLiters(actualLiters)}`;
+    modalDailyTargetEl.textContent = `เป้าหมาย: ${formatLiters(dailyTarget)}`;
+    modalDailyPercentEl.textContent = `${percentAchieved.toFixed(1)}% ของเป้าหมาย`;
+    modalDailyKpiBarEl.style.width = `${kpiPercent}%`;
+    if (percentAchieved < 50) modalDailyKpiBarEl.style.backgroundColor = "#ef4444";
+    else if (percentAchieved < 100) modalDailyKpiBarEl.style.backgroundColor = "#f59e0b";
+    else modalDailyKpiBarEl.style.backgroundColor = "#22c55e";
 
-        for (let i = 0; i < firstDayOfMonth; i++) {
-            calendarGridEl.innerHTML += `<div class="calendar-day calendar-day-empty"></div>`;
-        }
+    modalUserBreakdownEl.classList.add("hidden");
+    modalUserBreakdownListEl.innerHTML = "";
+    const selectedUser = (userRole === "BA") ? null : userFilter.value;
 
-        for (let i = 1; i <= daysInMonth; i++) {
-            const dayCell = document.createElement("div");
-            const dayData = salesMap.get(i);
-            const dayNumberSpan = document.createElement("span");
-            dayNumberSpan.className = "day-number";
-            dayNumberSpan.textContent = i;
+    if (userRole !== "BA" && selectedUser === "All Team" && dayData.salesByUser.size > 0) {
+        modalUserBreakdownEl.classList.remove("hidden");
+        const sortedUsers = Array.from(dayData.salesByUser.entries()).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
+        for (const [user, userData] of sortedUsers) {
+            const userActual = userData.totalLiters;
+            const userPercent = (individualDailyTarget > 0) ? Math.min((userActual / individualDailyTarget) * 100, 100) : (userActual > 0 ? 100 : 0);
+            const barColor = userPercent < 50 ? '#ef4444' : (userPercent < 100 ? '#f59e0b' : '#22c55e');
 
-            if (i === todayDate && month === todayMonth && year === todayYear) {
-                dayNumberSpan.classList.add("day-number-today");
-            }
-            const isPastOrToday = (year < todayYear) || (year === todayYear && month < todayMonth) || (year === todayYear && month === todayMonth && i <= todayDate);
-
-            if (dayData) {
-                dayCell.className = "calendar-day calendar-day-data";
-                dayCell.appendChild(dayNumberSpan);
-                dayCell.innerHTML += `<span class="day-sales">${new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(dayData.totalLiters)}</span>`;
-                
-                const kpiPercent = (dailyTarget > 0) ? Math.min((dayData.totalLiters / dailyTarget) * 100, 100) : 100;
-                const kpiBg = document.createElement("div");
-                kpiBg.className = "daily-kpi-bar-background";
-                const kpiFill = document.createElement("div");
-                kpiFill.className = "daily-kpi-bar-fill";
-                kpiFill.style.width = kpiPercent + "%";
-                if (kpiPercent < 50) kpiFill.style.backgroundColor = "#ef4444";
-                else if (kpiPercent < 100) kpiFill.style.backgroundColor = "#f59e0b";
-                else kpiFill.style.backgroundColor = "#22c55e";
-                kpiBg.appendChild(kpiFill);
-                dayCell.appendChild(kpiBg);
-                // --- ⚠️ MODIFIED: ส่ง individualDailyTarget ไปที่ openModal ---
-                dayCell.addEventListener("click", () => openModal(dayData, dailyTarget, individualDailyTarget));
-            } else if (isPastOrToday) {
-                dayCell.className = "calendar-day calendar-day-placeholder";
-                dayCell.appendChild(dayNumberSpan);
-                dayCell.innerHTML += `<span class="day-sales text-gray-400">0</span>`;
-            } else {
-                dayCell.className = "calendar-day calendar-day-placeholder";
-                dayCell.appendChild(dayNumberSpan);
-                let estimateText = "-";
-                if (estimatedDailyTarget > 0) {
-                    estimateText = `~${new Intl.NumberFormat('th-TH', { minimumFractionDigits: 0, maximumFractionDigits: 1 }).format(estimatedDailyTarget)}`;
-                } else if (remainingTarget <= 0) {
-                    estimateText = "✓";
-                }
-                dayCell.innerHTML += `<span class="day-sales text-gray-400 font-normal">${estimateText}</span>`;
-            }
-            calendarGridEl.appendChild(dayCell);
-        }
-    }
-
-    /**
-     * ⚠️ UPDATED: Opens modal and shows user breakdown (ถ้าเป็น Admin)
-     * ⚠️ MODIFIED: รับ individualDailyTarget
-     */
-    function openModal(dayData, dailyTarget, individualDailyTarget) {
-        const actualLiters = dayData.totalLiters;
-        const percentAchieved = (dailyTarget > 0) ? (actualLiters / dailyTarget) * 100 : (actualLiters > 0 ? 100 : 0);
-        const kpiPercent = Math.min(percentAchieved, 100);
-
-        modalTitleEl.textContent = `สรุปยอดขาย - วันที่ ${dayData.day} ${monthFilter.options[monthFilter.selectedIndex].text}`;
-        modalDailyActualEl.textContent = `ยอดจริง: ${formatLiters(actualLiters)}`;
-        modalDailyTargetEl.textContent = `เป้าหมาย: ${formatLiters(dailyTarget)}`;
-        modalDailyPercentEl.textContent = `${percentAchieved.toFixed(1)}% ของเป้าหมาย`;
-        modalDailyKpiBarEl.style.width = `${kpiPercent}%`;
-        if (percentAchieved < 50) modalDailyKpiBarEl.style.backgroundColor = "#ef4444";
-        else if (percentAchieved < 100) modalDailyKpiBarEl.style.backgroundColor = "#f59e0b";
-        else modalDailyKpiBarEl.style.backgroundColor = "#22c55e";
-
-        // --- ⚠️ MODIFIED: User Breakdown Logic ---
-        modalUserBreakdownEl.classList.add("hidden");
-        modalUserBreakdownListEl.innerHTML = "";
-        const selectedUser = (userRole === "BA") ? null : userFilter.value;
-
-        // จะแสดงส่วนนี้ก็ต่อเมื่อ เป็น Admin/Supervisor และ ดูแบบ "ทีมทั้งหมด"
-        if (userRole !== "BA" && selectedUser === "All Team" && dayData.salesByUser.size > 0) {
-            modalUserBreakdownEl.classList.remove("hidden");
-            const sortedUsers = Array.from(dayData.salesByUser.entries()).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
-            for (const [user, userData] of sortedUsers) {
-                // --- ⚠️ NEW: Bar Calculation ---
-                const userActual = userData.totalLiters;
-                // คำนวณเปอร์เซ็นต์ (ถ้าเป้าเป็น 0 แต่ทำยอดได้ ให้ 100%)
-                const userPercent = (individualDailyTarget > 0) ? Math.min((userActual / individualDailyTarget) * 100, 100) : (userActual > 0 ? 100 : 0);
-                const barColor = userPercent < 50 ? '#ef4444' : (userPercent < 100 ? '#f59e0b' : '#22c55e');
-                // --- END NEW ---
-
-                // --- ⚠️ MODIFIED: New HTML structure ---
-                modalUserBreakdownListEl.innerHTML += `
-                    <div class="grid grid-cols-2 gap-x-2 pb-2 mb-2 border-b border-gray-100">
-                        <div class="text-sm text-gray-700">${user}</div>
-                        <div class="text-sm text-right font-semibold text-gray-800">${formatLiters(userData.totalLiters)}</div>
-                        <div class="col-span-2">
-                            <div class="individual-kpi-bar-background">
-                                <div class="individual-kpi-bar-fill" style="width: ${userPercent}%; background-color: ${barColor};"></div>
-                            </div>
+            modalUserBreakdownListEl.innerHTML += `
+                <div class="grid grid-cols-2 gap-x-2 pb-2 mb-2 border-b border-gray-100">
+                    <div class="text-sm text-gray-700">${user}</div>
+                    <div class="text-sm text-right font-semibold text-gray-800">${formatLiters(userData.totalLiters)}</div>
+                    <div class="col-span-2">
+                        <div class="individual-kpi-bar-background">
+                            <div class="individual-kpi-bar-fill" style="width: ${userPercent}%; background-color: ${barColor};"></div>
                         </div>
                     </div>
-                `;
-            }
+                </div>
+            `;
         }
-        // --- END MODIFIED ---
-
-        // --- Aggregated SKU Summary Logic ---
-        const skuSummary = new Map();
-        for (const skuEntry of dayData.skus) {
-            const key = skuEntry.sku;
-            if (!skuSummary.has(key)) skuSummary.set(key, { totalQuantity: 0, totalLiters: 0 });
-            const summary = skuSummary.get(key);
-            summary.totalQuantity += skuEntry.units;
-            summary.totalLiters += skuEntry.totalLitersPerSku;
-        }
-
-        while (modalSkuDetailsContainer.children.length > 1) {
-            modalSkuDetailsContainer.removeChild(modalSkuDetailsContainer.lastChild);
-        }
-
-        if (skuSummary.size === 0) {
-            modalSkuDetailsContainer.innerHTML += `<div class="text-center text-gray-500 p-4">ไม่มีข้อมูล SKU สำหรับวันนี้</div>`;
-        } else {
-            for (const [sku, summary] of skuSummary.entries()) {
-                modalSkuDetailsContainer.innerHTML += `
-                    <div class="sku-summary-item grid grid-cols-3 gap-4 p-2 border-b border-gray-100">
-                        <div class="text-left font-medium text-gray-700">${sku}</div>
-                        <div class="text-center text-gray-600">${summary.totalQuantity.toLocaleString('th-TH')}</div>
-                        <div class="text-right font-semibold text-gray-800">${summary.totalLiters.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 1})}</div>
-                    </div>`;
-            }
-        }
-
-        modalEl.classList.remove("hidden");
-        setTimeout(() => {
-            modalEl.classList.add("opacity-100");
-            modalContentEl.classList.remove("scale-95", "opacity-0");
-            modalContentEl.classList.add("scale-100", "opacity-100");
-        }, 10);
     }
 
-    function closeModal() {
-        modalEl.classList.remove("opacity-100");
-        modalContentEl.classList.remove("scale-100", "opacity-100");
-        modalContentEl.classList.add("scale-95", "opacity-0");
-        setTimeout(() => modalEl.classList.add("hidden"), 300);
+    const skuSummary = new Map();
+    for (const skuEntry of dayData.skus) {
+        const key = skuEntry.sku;
+        if (!skuSummary.has(key)) skuSummary.set(key, { totalQuantity: 0, totalLiters: 0 });
+        const summary = skuSummary.get(key);
+        summary.totalQuantity += skuEntry.units;
+        summary.totalLiters += skuEntry.totalLitersPerSku;
     }
+
+    while (modalSkuDetailsContainer.children.length > 1) {
+        modalSkuDetailsContainer.removeChild(modalSkuDetailsContainer.lastChild);
+    }
+
+    if (skuSummary.size === 0) {
+        modalSkuDetailsContainer.innerHTML += `<div class="text-center text-gray-500 p-4">ไม่มีข้อมูล SKU สำหรับวันนี้</div>`;
+    } else {
+        for (const [sku, summary] of skuSummary.entries()) {
+            modalSkuDetailsContainer.innerHTML += `
+                <div class="sku-summary-item grid grid-cols-3 gap-4 p-2 border-b border-gray-100">
+                    <div class="text-left font-medium text-gray-700">${sku}</div>
+                    <div class="text-center text-gray-600">${summary.totalQuantity.toLocaleString('th-TH')}</div>
+                    <div class="text-right font-semibold text-gray-800">${summary.totalLiters.toLocaleString('th-TH', {minimumFractionDigits: 0, maximumFractionDigits: 1})}</div>
+                </div>`;
+        }
+    }
+
+    modalEl.classList.remove("hidden");
+    setTimeout(() => {
+        modalEl.classList.add("opacity-100");
+        modalContentEl.classList.remove("scale-95", "opacity-0");
+        modalContentEl.classList.add("scale-100", "opacity-100");
+    }, 10);
+}
+
+function closeModal() {
+    modalEl.classList.remove("opacity-100");
+    modalContentEl.classList.remove("scale-100", "opacity-100");
+    modalContentEl.classList.add("scale-95", "opacity-0");
+    setTimeout(() => modalEl.classList.add("hidden"), 300);
+}
     
     // Event listeners ถูกย้ายไปอยู่ใน DOMContentLoaded แล้ว
     </script>
