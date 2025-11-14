@@ -35,7 +35,6 @@
         }
         .day-sales { 
             font-size: 0.75rem; font-weight: 700; color: #1f2937; text-align: center; display: block; 
-            /* MODIFIED: เพิ่มระยะห่างด้านบนเพื่อให้ Day Number มีที่ว่าง */
             margin-top: 0.1rem;
         }
         .daily-kpi-bar-background { height: 6px; width: 90%; margin: 0 auto; background-color: #e5e7eb; border-radius: 3px; overflow: hidden; }
@@ -126,13 +125,15 @@
             <h3 class="text-xl font-semibold mb-4 text-gray-700">สรุปยอดขายรายเดือน</h3>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 text-sm font-medium">
                 <span class="text-green-600" id="current-liters-text">ยอดจริง: 0 ขวด (0 ลิตร)</span>
-                <span class="text-gray-500 text-right" id="liters-target-text">เป้าหมาย: 1620 ขวด (1004.4 ลิตร)</span>
+                <!-- MODIFIED: แสดงเป้าหมายที่เหลือ -->
+                <span class="text-gray-500 text-right" id="liters-target-text">เป้าหมายที่เหลือ: 1620 ขวด (1004.4 ลิตร)</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-4">
                 <div id="progress-bar" class="bg-green-500 h-4 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
             </div>
+            <!-- แสดงเปอร์เซ็นต์เทียบกับเป้าหมายรวม -->
             <div class="text-right text-sm text-gray-600 mt-2" id="progress-percent-text">
-                0% ของเป้าหมาย
+                0% ของเป้าหมายรวม
             </div>
         </section>
 
@@ -176,7 +177,7 @@
                 <h3 class="text-lg font-semibold text-gray-700 mb-2">สรุปยอดประจำวัน</h3>
                 <div class="flex justify-between items-center mb-1 text-sm font-medium">
                     <span class="text-green-600" id="modal-daily-actual">ยอดจริง: 0 ขวด (0 ลิตร)</span>
-                    <span class="text-gray-500" id="modal-daily-target">เป้าหมาย: 0 ขวด (0 ลิตร)</span>
+                    <span class="text-gray-500" id="modal-daily-target">เป้าหมายรายวัน: 0 ขวด (0 ลิตร)</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-3"> 
                     <div id="modal-daily-kpi-bar" class="bg-green-500 h-3 rounded-full daily-kpi-bar-fill" style="width: 0%; transition: width 0.5s ease-out;"></div>
@@ -354,7 +355,7 @@
 
             const dateObj = new Date(Date.UTC(row.date_year, row.date_month, row.date_day));
             const year = dateObj.getUTCFullYear();
-            const month = dateObj.getUTCMonth() + 1; // 1-12
+            const month = dateObj.getUTCMonth() + 1; // 0-11 -> 1-12
             const dayOfMonth = dateObj.getUTCDate(); // 1-31
             
             if (userName === "N/A" && row.user) {
@@ -672,15 +673,18 @@
         let progressPercent = (monthlyTarget > 0) ? (totalMonthlyLiters / monthlyTarget) * 100 : (totalMonthlyLiters > 0 ? 100 : 0);
         
         const litersActualText = formatLitersAndBottles(totalMonthlyLiters);
-        const litersTargetText = formatLitersAndBottles(monthlyTarget);
+        
+        // MODIFIED: Calculate Remaining Target
+        const remainingLiters = Math.max(0, monthlyTarget - totalMonthlyLiters);
+        const remainingTargetText = formatLitersAndBottles(remainingLiters);
 
         currentLitersEl.textContent = `ยอดจริง: ${litersActualText}`;
-        litersTargetEl.textContent = `เป้าหมาย: ${litersTargetText}`;
+        litersTargetEl.textContent = `เป้าหมายที่เหลือ: ${remainingTargetText}`;
         
         progressBarEl.style.width = `${Math.min(progressPercent, 100)}%`;
         progressBarEl.style.backgroundColor = progressPercent < 50 ? "#ef4444" : (progressPercent < 100 ? "#f59e0b" : "#22c55e");
 
-        progressPercentEl.textContent = `${progressPercent.toFixed(1)}% ของเป้าหมาย`;
+        progressPercentEl.textContent = `${progressPercent.toFixed(1)}% ของเป้าหมายรวม (${formatLitersAndBottles(monthlyTarget)})`;
         return totalMonthlyLiters;
     }
 
@@ -718,7 +722,9 @@
         } else if (year === todayYear && month === todayMonth) {
             for (let d = todayDate + 1; d <= daysInMonth; d++) remainingWorkingDays++;
         }
-        const estimatedDailyTargetLiters = (remainingWorkingDays > 0) ? (remainingTarget / remainingWorkingDays) : 0;
+        
+        // MODIFIED: Calculate the required daily average to hit the remaining target
+        const requiredDailyNeedLiters = (remainingWorkingDays > 0) ? (remainingTarget / remainingWorkingDays) : 0;
 
         for (let i = 0; i < firstDayOfMonth; i++) {
             calendarGridEl.innerHTML += `<div class="calendar-day calendar-day-empty"></div>`;
@@ -739,7 +745,6 @@
             if (dayData) {
                 dayCell.className = "calendar-day calendar-day-data";
                 dayCell.appendChild(dayNumberSpan);
-                // MODIFIED: Show total bottles
                 dayCell.innerHTML += `<span class="day-sales">${formatBottles(dayData.totalLiters)}</span>`;
                 
                 const kpiPercent = (dailyTargetLiters > 0) ? Math.min((dayData.totalLiters / dailyTargetLiters) * 100, 100) : 100;
@@ -762,12 +767,15 @@
                 dayCell.className = "calendar-day calendar-day-placeholder";
                 dayCell.appendChild(dayNumberSpan);
                 let estimateText = "-";
-                if (estimatedDailyTargetLiters > 0) {
-                    // MODIFIED: Show estimated bottles
-                    estimateText = `~${formatBottles(estimatedDailyTargetLiters)}`;
-                } else if (remainingTarget <= 0 && isPastOrToday) { 
+                
+                if (remainingTarget <= 0) {
+                    // Achieved target
                     estimateText = "✓";
+                } else if (requiredDailyNeedLiters > 0) {
+                    // MODIFIED: Show estimated bottles (required daily need)
+                    estimateText = `~${formatBottles(requiredDailyNeedLiters)}`;
                 }
+                
                 dayCell.innerHTML += `<span class="day-sales text-gray-400 font-normal">${estimateText}</span>`;
             }
             calendarGridEl.appendChild(dayCell);
@@ -783,7 +791,7 @@
         
         modalTitleEl.textContent = `สรุปยอดขาย - วันที่ ${dayData.day} ${monthFilter.options[monthFilter.selectedIndex].text}`;
         modalDailyActualEl.textContent = `ยอดจริง: ${formatLitersAndBottles(actualLiters)}`;
-        modalDailyTargetEl.textContent = `เป้าหมาย: ${formatLitersAndBottles(dailyTargetLiters)}`;
+        modalDailyTargetEl.textContent = `เป้าหมายรายวัน: ${formatLitersAndBottles(dailyTargetLiters)}`;
         modalDailyPercentEl.textContent = `${percentAchieved.toFixed(1)}% ของเป้าหมาย`;
         modalDailyKpiBarEl.style.width = `${kpiPercent}%`;
         if (percentAchieved < 50) modalDailyKpiBarEl.style.backgroundColor = "#ef4444";
