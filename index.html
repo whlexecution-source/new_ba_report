@@ -378,6 +378,7 @@
                 continue;
             }
 
+            // ⚠️ NOTE: Date object creation uses UTC for consistency
             const dateObj = new Date(Date.UTC(row.date_year, row.date_month, row.date_day));
             const year = dateObj.getUTCFullYear();
             const month = dateObj.getUTCMonth() + 1; // 1-12
@@ -521,8 +522,10 @@
             userFilterContainer.classList.add("hidden"); // ซ่อน User Filter
             
             // BA Target is fixed at baseMonthlyTarget
-            effectiveMonthlyTarget = baseMonthlyTarget; 
+            // effectiveMonthlyTarget = baseMonthlyTarget; // ⚠️ This is now handled in handleMonthChange()
 
+            // ⚠️ NEW: BA mode: set username directly from processed data
+            processedDataForDisplay = processRawData(allTeamRawData);
             userNameEl.textContent = processedDataForDisplay.userName; // Set name
             
             populateMonthFilter(processedDataForDisplay.salesByMonth);
@@ -595,51 +598,43 @@
             const option = document.createElement("option");
             option.value = user;
             // ⚠️ MODIFIED: ปรับให้แสดงชื่อทีมที่ถูกต้อง (หรือ All Team)
-            option.textContent = (user === "All Team") ? `ทีมทั้งหมด (${teamName})` : user; 
+            option.textContent = (user === "All Team") ? `${teamName} (รวม)` : user; 
             userFilter.appendChild(option);
         });
     }
 
     /**
-     * ⚠️ MODIFIED: Function to calculate effectiveMonthlyTarget
+     * ⚠️ MODIFIED: Function updated to only filter data and setup filters (Target calculation moved)
      */
     function processAndDisplayData() {
         const selectedUser = userFilter.value;
         let dataToProcess;
-        let numUsers = 1; // Default to 1 user (BA mode or specific user filter)
 
         // ⚠️ NEW: คำนวณรายชื่อ User ที่อยู่ในกลุ่มข้อมูล 'allTeamRawData' ปัจจุบัน
         const uniqueUsersInGroup = [...new Set(allTeamRawData.map(r => r.user || "Unknown").filter(u => u && u !== "Unknown"))].sort();
         allUsersInTeam = ["All Team", ...uniqueUsersInGroup]; 
-        populateUserFilter(allUsersInTeam);
+        populateUserFilter(allUsersInTeam); // Update the user filter list
         
         if (selectedUser === "All Team") {
             dataToProcess = allTeamRawData;
             userNameEl.textContent = `${teamName} (รวม)`;
-            
-            // Calculate effective target based on actual unique users in the filtered team data
-            numUsers = uniqueUsersInGroup.length; 
-            
         } else {
             // Admin viewing specific BA
             const userExists = allUsersInTeam.includes(selectedUser);
             const userToFilter = userExists ? selectedUser : "All Team";
-            userFilter.value = userToFilter;
+            userFilter.value = userToFilter; // ensure the filter is set correctly
             
             if (userToFilter === "All Team") {
                  dataToProcess = allTeamRawData;
                  userNameEl.textContent = `${teamName} (รวม)`;
-                 numUsers = uniqueUsersInGroup.length; 
             } else {
                  dataToProcess = allTeamRawData.filter(r => (r.user || "Unknown") === userToFilter);
                  userNameEl.textContent = userToFilter;
-                 numUsers = 1; // Filtering for one user
             }
         }
         
-        // ⚠️ NEW: Set the effective monthly target based on number of unique users (or 0 if no users/data)
-        effectiveMonthlyTarget = (numUsers > 0) ? baseMonthlyTarget * numUsers : 0; 
-        
+        // ⚠️ Target calculation removed from here
+
         processedDataForDisplay = processRawData(dataToProcess);
         populateMonthFilter(processedDataForDisplay.salesByMonth);
         const latestMonth = Object.keys(processedDataForDisplay.salesByMonth).sort().pop();
@@ -694,10 +689,18 @@
         }
     }
     
+    /**
+     * ⚠️ MODIFIED: Target calculation moved here to be month-specific and data-driven
+     */
     function handleMonthChange() {
         const selectedMonthYear = monthFilter.value;
 
         if (!selectedMonthYear || !processedDataForDisplay.salesByMonth || !processedDataForDisplay.salesByMonth[selectedMonthYear]) {
+            // Set default/zero target if no data
+            effectiveMonthlyTarget = baseMonthlyTarget; // Set to BA target if no month data is found, otherwise it might be 0
+            if (userRole !== "BA" && allUsersInTeam.length > 1) {
+                 effectiveMonthlyTarget = 0; // Better to show 0 target if Admin/Supervisor view has no data at all
+            }
             const totalMonthlyLiters = loadDashboard([]);
             generateCalendar(todayYear, todayMonth, [], totalMonthlyLiters);
             loadSkuSummary(new Map());
@@ -706,6 +709,34 @@
 
         const monthData = processedDataForDisplay.salesByMonth[selectedMonthYear];
         const [year, month] = selectedMonthYear.split('-').map(Number);
+        
+        // 1. Calculate unique users with data this month
+        let uniqueUsersInMonth = new Set();
+        if (monthData.dailySales) {
+            for (const day of monthData.dailySales) {
+                // Collect users who have sales data on this day
+                // day.salesByUser is a Map<userName, data>
+                for (const user of day.salesByUser.keys()) {
+                    uniqueUsersInMonth.add(user);
+                }
+            }
+        }
+        const numUsersInMonth = uniqueUsersInMonth.size;
+
+        // 2. Determine effectiveMonthlyTarget based on view mode and active users
+        const selectedUser = (userRole !== "BA") ? userFilter.value : null;
+
+        if (userRole === "BA" || (userRole !== "BA" && selectedUser !== "All Team")) {
+            // BA mode (always 1 user) OR Admin viewing specific BA
+            // Target is fixed per BA
+            effectiveMonthlyTarget = baseMonthlyTarget; 
+        } else {
+            // Admin/Supervisor viewing "All Team" (or All Company)
+            // Target scales based on active users this month (data-driven)
+            effectiveMonthlyTarget = (numUsersInMonth > 0) ? baseMonthlyTarget * numUsersInMonth : 0;
+        }
+
+        // 3. Continue with display logic
         
         const monthlySkuSummary = new Map();
         if (monthData.dailySales) {
