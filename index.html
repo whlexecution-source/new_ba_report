@@ -33,18 +33,22 @@
             width: 1.25rem; height: 1.25rem; display: inline-flex;
             align-items: center; justify-content: center; font-weight: bold;
         }
-        .day-sales { font-size: 0.75rem; font-weight: 700; color: #1f2937; text-align: center; display: block; }
+        .day-sales { 
+            font-size: 0.75rem; font-weight: 700; color: #1f2937; text-align: center; display: block; 
+            /* MODIFIED: เพิ่มระยะห่างด้านบนเพื่อให้ Day Number มีที่ว่าง */
+            margin-top: 0.1rem;
+        }
         .daily-kpi-bar-background { height: 6px; width: 90%; margin: 0 auto; background-color: #e5e7eb; border-radius: 3px; overflow: hidden; }
         .daily-kpi-bar-fill { height: 100%; background-color: #22c55e; border-radius: 3px; transition: width 0.5s ease-out; }
 
         /* --- Individual Bar Styles --- */
         .individual-kpi-bar-background {
-            height: 8px; /* ทำให้หนากว่าแถบในปฏิทินเล็กน้อย */
+            height: 8px; 
             width: 100%;
-            background-color: #e5e7eb; /* gray-200 */
+            background-color: #e5e7eb; 
             border-radius: 4px;
             overflow: hidden;
-            margin-top: 4px; /* เพิ่มระยะห่างด้านบน */
+            margin-top: 4px; 
         }
         .individual-kpi-bar-fill {
             height: 100%;
@@ -121,8 +125,8 @@
         <section id="monthly-summary" class="bg-white p-6 rounded-lg shadow-md mb-6">
             <h3 class="text-xl font-semibold mb-4 text-gray-700">สรุปยอดขายรายเดือน</h3>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 text-sm font-medium">
-                <span class="text-green-600" id="current-liters-text">ยอดจริง: 0 ลิตร (0 ขวด)</span>
-                <span class="text-gray-500 text-right" id="liters-target-text">เป้าหมาย: 1004.4 ลิตร (1620 ขวด)</span>
+                <span class="text-green-600" id="current-liters-text">ยอดจริง: 0 ขวด (0 ลิตร)</span>
+                <span class="text-gray-500 text-right" id="liters-target-text">เป้าหมาย: 1620 ขวด (1004.4 ลิตร)</span>
             </div>
             <div class="w-full bg-gray-200 rounded-full h-4">
                 <div id="progress-bar" class="bg-green-500 h-4 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
@@ -139,7 +143,7 @@
                 <div id="sku-summary-header" class="grid grid-cols-3 gap-4 p-2 bg-gray-100 rounded-t-md font-semibold text-gray-600 text-sm sticky top-0 z-10">
                     <div class="text-left">รหัสสินค้า (SKU)</div>
                     <div class="text-center">รวมจำนวน (ชิ้น)</div>
-                    <div class="text-right">รวม (ลิตร)</div>
+                    <div class="text-right">รวม (ขวด / ลิตร)</div>
                 </div>
                 <div id="sku-summary-list"></div>
             </div>
@@ -147,7 +151,7 @@
 
         <!-- CALENDAR VIEW -->
         <section id="calendar-view">
-            <h3 class="text-xl font-semibold mb-4 text-gray-700">ปฏิทินยอดขาย (ลิตร)</h3>
+            <h3 class="text-xl font-semibold mb-4 text-gray-700">ปฏิทินยอดขาย (ขวด)</h3>
             <div id="weekday-headers" class="grid grid-cols-7 gap-1">
                 <div class="calendar-day-header">อา.</div> <div class="calendar-day-header">จ.</div>
                 <div class="calendar-day-header">อ.</div> <div class="calendar-day-header">พ.</div>
@@ -171,8 +175,8 @@
             <div id="modal-daily-kpi-section" class="mt-4">
                 <h3 class="text-lg font-semibold text-gray-700 mb-2">สรุปยอดประจำวัน</h3>
                 <div class="flex justify-between items-center mb-1 text-sm font-medium">
-                    <span class="text-green-600" id="modal-daily-actual">ยอดจริง: 0 ล. (0 ขวด)</span>
-                    <span class="text-gray-500" id="modal-daily-target">เป้าหมาย: 0 ล. (0 ขวด)</span>
+                    <span class="text-green-600" id="modal-daily-actual">ยอดจริง: 0 ขวด (0 ลิตร)</span>
+                    <span class="text-gray-500" id="modal-daily-target">เป้าหมาย: 0 ขวด (0 ลิตร)</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-3"> 
                     <div id="modal-daily-kpi-bar" class="bg-green-500 h-3 rounded-full daily-kpi-bar-fill" style="width: 0%; transition: width 0.5s ease-out;"></div>
@@ -188,7 +192,7 @@
                 <div class="max-h-32 overflow-y-auto">
                     <div class="grid grid-cols-2 gap-2 p-2 bg-gray-50 text-sm font-medium text-gray-600 rounded-t-md sticky top-0 z-10">
                         <div>พนักงาน</div>
-                        <div class="text-right">ยอด (ลิตร)</div>
+                        <div class="text-right">ยอด (ขวด / ลิตร)</div>
                     </div>
                     <div id="modal-user-breakdown-list"></div>
                 </div>
@@ -199,7 +203,7 @@
                 <div id="modal-sku-header" class="grid grid-cols-3 gap-4 p-2 bg-gray-100 rounded-t-md font-semibold text-gray-600 text-sm sticky top-0 z-10">
                     <div class="text-left">รหัสสินค้า (SKU)</div>
                     <div class="text-center">จำนวน (ชิ้น)</div>
-                    <div class="text-right">รวม (ลิตร)</div>
+                    <div class="text-right">รวม (ขวด / ลิตร)</div>
                 </div>
             </div>
         </div>
@@ -216,10 +220,9 @@
     // --- 0. GLOBAL DATA STORE ---
     let userRole = "BA"; 
     let teamName = "";
-    let allTeamRawData = []; // ข้อมูลดิบที่กรองแล้ว (ของ BA, ทีม, หรือบริษัท)
-    let allUsersInTeam = []; // ['All Team', 'User A', 'User B']
+    let allTeamRawData = []; 
     let processedDataForDisplay = {}; 
-    let currentEffectiveMonthlyTarget = BASE_MONTHLY_TARGET; // เป้าหมายรวมที่ปรับตามจำนวนผู้ใช้งานในเดือนที่เลือก
+    let currentEffectiveMonthlyTarget = BASE_MONTHLY_TARGET; 
 
     const today = new Date();
     const todayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
@@ -277,14 +280,26 @@
         }).format(number);
     }
 
-    function formatBottles(liters) {
+    function litersToBottles(liters) {
         if (LITERS_PER_BOTTLE === 0) return 0;
         const bottles = liters / LITERS_PER_BOTTLE;
-        return Math.round(bottles).toLocaleString('th-TH');
+        return Math.round(bottles);
+    }
+    
+    function formatBottles(liters) {
+        return litersToBottles(liters).toLocaleString('th-TH');
     }
 
-    function formatTarget(liters) {
-        return `${formatLiters(liters)} ลิตร (${formatBottles(liters)} ขวด)`;
+    function formatLitersAndBottles(liters) {
+        const bottles = formatBottles(liters);
+        const lits = formatLiters(liters);
+        return `${bottles} ขวด (${lits} ลิตร)`;
+    }
+    
+    function formatBottlesSlashLiters(liters) {
+         const bottles = formatBottles(liters);
+         const lits = formatLiters(liters);
+         return `${bottles} / ${lits}`;
     }
 
     // --- 3. BACKEND CONNECTION & DATA PROCESSING ---
@@ -332,7 +347,6 @@
         let userName = "N/A"; 
         
         for (const row of rawData) {
-            // Check for valid date parts
             if (row.date_year === undefined || row.date_month === undefined || row.date_day === undefined) {
                 console.warn("Invalid date parts received:", row);
                 continue;
@@ -343,7 +357,6 @@
             const month = dateObj.getUTCMonth() + 1; // 1-12
             const dayOfMonth = dateObj.getUTCDate(); // 1-31
             
-            // Determine name for BA view
             if (userName === "N/A" && row.user) {
                 userName = row.user;
             }
@@ -377,7 +390,6 @@
             dayData.skus.push(skuData); 
             dayData.totalLiters += totalLiters;
 
-            // --- ติดตามยอดขายตาม User (สำหรับ Admin) ---
             const user = row.user || "Unknown"; 
             if (!dayData.salesByUser.has(user)) {
                 dayData.salesByUser.set(user, { totalLiters: 0 });
@@ -472,12 +484,10 @@
             appTitle.textContent = "TAP: Super Admin Dashboard";
             document.title = "Super Admin Dashboard";
             
-            // Set up Team Filter
             populateTeamFilter(data.teamsList);
             teamFilterContainer.classList.remove("hidden");
             teamFilter.value = data.teamFilter || "All Company";
 
-            // Set up User Filter (uses current allTeamRawData)
             const allUsers = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").filter(u => u && u !== "Unknown").sort())];
             populateUserFilter(allUsers);
             userFilterContainer.classList.remove("hidden");
@@ -492,7 +502,6 @@
 
             teamFilterContainer.classList.add("hidden");
             
-            // Set up User Filter (uses current allTeamRawData)
             const allUsers = ["All Team", ...new Set(allTeamRawData.map(r => r.user || "Unknown").filter(u => u && u !== "Unknown").sort())];
             populateUserFilter(allUsers);
             userFilterContainer.classList.remove("hidden");
@@ -508,7 +517,6 @@
             userNameEl.textContent = data.userData[0].user || "พนักงาน";
         }
         
-        // Process data for display and set filters
         processAndDisplayData(allTeamRawData, data.teamsList);
         
         loginView.classList.add("hidden");
@@ -543,7 +551,6 @@
         loginButton.classList.add("hidden");
         loadingSpinner.classList.remove("hidden");
 
-        // Refetch data based on team filter (Only for SuperAdmin)
         const data = await fetchDataFromBackend(phoneNo, selectedTeam);
 
         loadingSpinner.classList.add("hidden");
@@ -565,24 +572,18 @@
     
     function processAndDisplayData(rawData) {
         let dataToProcess = rawData;
-        let numUsers = 1; // Default to 1 user (for BA view or when filtered to one user)
-
+        
         const selectedUser = userFilter.value;
         const isAdminView = (userRole === "Supervisor" || userRole === "SuperAdmin");
         
         // 1. GATHER DATA TO PROCESS
         if (isAdminView) {
             if (selectedUser !== "All Team" && selectedUser) {
-                // Admin filtering for a single user
                 dataToProcess = rawData.filter(r => (r.user || "Unknown") === selectedUser);
                 userNameEl.textContent = selectedUser;
-                numUsers = 1; // Explicitly one user
             } else {
-                // Admin viewing All Team/All Company (use rawData as is)
                 userNameEl.textContent = teamName;
                 dataToProcess = rawData;
-                // We calculate numUsers based on data later, but default for now
-                numUsers = 0; 
             }
         }
         
@@ -590,7 +591,6 @@
         processedDataForDisplay = processRawData(dataToProcess);
         populateMonthFilter(processedDataForDisplay.salesByMonth);
         
-        // Set month to the latest available month
         const latestMonth = Object.keys(processedDataForDisplay.salesByMonth).sort().pop();
         if (latestMonth) {
             monthFilter.value = latestMonth;
@@ -598,7 +598,7 @@
              monthFilter.value = "";
         }
         
-        // 3. Trigger display (this handles scaling target based on the data in the selected month)
+        // 3. Trigger display
         handleMonthChange();
     }
     
@@ -615,14 +615,12 @@
             // 1. CALCULATE UNIQUE USERS IN THIS MONTH'S DATA
             const userSet = new Set();
             if (isAdminView && userFilter.value === "All Team") {
-                // For Admin/Supervisor viewing ALL TEAM, count unique users who made sales this month
                 currentMonthSalesData.forEach(day => {
                     day.salesByUser.forEach((_, user) => {
                         userSet.add(user);
                     });
                 });
             } else if (!isAdminView || userFilter.value !== "All Team") {
-                // For BA or Admin viewing a single user, count is always 1 (if data exists)
                 if (currentMonthSalesData.length > 0) userSet.add("Single User");
             }
             uniqueUsersInMonth = Array.from(userSet);
@@ -634,24 +632,17 @@
         if (numUsersInMonth > 0) {
             currentEffectiveMonthlyTarget = BASE_MONTHLY_TARGET * numUsersInMonth;
         } else if (!isAdminView || userFilter.value !== "All Team") {
-            // Default to single user target if no data found but it's a single user view
             currentEffectiveMonthlyTarget = BASE_MONTHLY_TARGET;
         } else {
-             // If Admin view, All Team, and no sales, target is 0
              currentEffectiveMonthlyTarget = 0;
         }
 
         // 3. LOAD DATA AND UI
-        
-        // Update Monthly Summary
         const totalMonthlyLiters = loadDashboard(currentMonthSalesData, currentEffectiveMonthlyTarget);
-        
-        // Update SKU Summary
         const monthlySkuSummary = calculateMonthlySkuSummary(currentMonthSalesData);
         loadSkuSummary(monthlySkuSummary);
         
-        // Update Calendar
-        const [year, month] = selectedMonthYear.split('-').map(Number);
+        const [year, month] = selectedMonthYear ? selectedMonthYear.split('-').map(Number) : [todayYear, todayMonth + 1];
         generateCalendar(year, month - 1, currentMonthSalesData, currentEffectiveMonthlyTarget, totalMonthlyLiters);
     }
     
@@ -680,8 +671,8 @@
         
         let progressPercent = (monthlyTarget > 0) ? (totalMonthlyLiters / monthlyTarget) * 100 : (totalMonthlyLiters > 0 ? 100 : 0);
         
-        const litersActualText = formatTarget(totalMonthlyLiters);
-        const litersTargetText = formatTarget(monthlyTarget);
+        const litersActualText = formatLitersAndBottles(totalMonthlyLiters);
+        const litersTargetText = formatLitersAndBottles(monthlyTarget);
 
         currentLitersEl.textContent = `ยอดจริง: ${litersActualText}`;
         litersTargetEl.textContent = `เป้าหมาย: ${litersTargetText}`;
@@ -704,7 +695,7 @@
                     <div class="sku-summary-item grid grid-cols-3 gap-4 p-2 border-b border-gray-100">
                         <div class="text-left font-medium text-gray-700">${sku}</div>
                         <div class="text-center text-gray-600">${summary.totalQuantity.toLocaleString('th-TH')}</div>
-                        <div class="text-right font-semibold text-gray-800">${formatLiters(summary.totalLiters)}</div>
+                        <div class="text-right font-semibold text-gray-800">${formatBottlesSlashLiters(summary.totalLiters)}</div>
                     </div>`;
             }
         }
@@ -716,22 +707,18 @@
         const firstDayOfMonth = new Date(Date.UTC(year, month, 1)).getUTCDay();
         const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
         
-        // Target per day (based on current monthly target)
-        const dailyTarget = (daysInMonth > 0) ? (monthlyTarget / daysInMonth) : 0;
-        
-        // Target per individual BA (for modal breakdown)
+        const dailyTargetLiters = (daysInMonth > 0) ? (monthlyTarget / daysInMonth) : 0;
         const individualDailyTarget = (daysInMonth > 0) ? (BASE_MONTHLY_TARGET / daysInMonth) : 0;
         
         const remainingTarget = Math.max(0, monthlyTarget - totalMonthlyLiters);
         let remainingWorkingDays = 0;
 
-        // Calculate remaining working days for estimation
         if (year > todayYear || (year === todayYear && month > todayMonth)) {
             remainingWorkingDays = daysInMonth;
         } else if (year === todayYear && month === todayMonth) {
             for (let d = todayDate + 1; d <= daysInMonth; d++) remainingWorkingDays++;
         }
-        const estimatedDailyTarget = (remainingWorkingDays > 0) ? (remainingTarget / remainingWorkingDays) : 0;
+        const estimatedDailyTargetLiters = (remainingWorkingDays > 0) ? (remainingTarget / remainingWorkingDays) : 0;
 
         for (let i = 0; i < firstDayOfMonth; i++) {
             calendarGridEl.innerHTML += `<div class="calendar-day calendar-day-empty"></div>`;
@@ -752,9 +739,10 @@
             if (dayData) {
                 dayCell.className = "calendar-day calendar-day-data";
                 dayCell.appendChild(dayNumberSpan);
-                dayCell.innerHTML += `<span class="day-sales">${formatLiters(dayData.totalLiters)}</span>`;
+                // MODIFIED: Show total bottles
+                dayCell.innerHTML += `<span class="day-sales">${formatBottles(dayData.totalLiters)}</span>`;
                 
-                const kpiPercent = (dailyTarget > 0) ? Math.min((dayData.totalLiters / dailyTarget) * 100, 100) : 100;
+                const kpiPercent = (dailyTargetLiters > 0) ? Math.min((dayData.totalLiters / dailyTargetLiters) * 100, 100) : 100;
                 const kpiBg = document.createElement("div");
                 kpiBg.className = "daily-kpi-bar-background";
                 const kpiFill = document.createElement("div");
@@ -765,7 +753,7 @@
                 else kpiFill.style.backgroundColor = "#22c55e";
                 kpiBg.appendChild(kpiFill);
                 dayCell.appendChild(kpiBg);
-                dayCell.addEventListener("click", () => openModal(dayData, dailyTarget, individualDailyTarget));
+                dayCell.addEventListener("click", () => openModal(dayData, dailyTargetLiters, individualDailyTarget));
             } else if (isPastOrToday) {
                 dayCell.className = "calendar-day calendar-day-placeholder";
                 dayCell.appendChild(dayNumberSpan);
@@ -774,9 +762,10 @@
                 dayCell.className = "calendar-day calendar-day-placeholder";
                 dayCell.appendChild(dayNumberSpan);
                 let estimateText = "-";
-                if (estimatedDailyTarget > 0) {
-                    estimateText = `~${formatLiters(estimatedDailyTarget)}`;
-                } else if (remainingTarget <= 0 && isPastOrToday) { // Check isPastOrToday to prevent 'V' on future dates
+                if (estimatedDailyTargetLiters > 0) {
+                    // MODIFIED: Show estimated bottles
+                    estimateText = `~${formatBottles(estimatedDailyTargetLiters)}`;
+                } else if (remainingTarget <= 0 && isPastOrToday) { 
                     estimateText = "✓";
                 }
                 dayCell.innerHTML += `<span class="day-sales text-gray-400 font-normal">${estimateText}</span>`;
@@ -787,17 +776,14 @@
 
     // --- 6. MODAL FUNCTIONS ---
 
-    function openModal(dayData, dailyTarget, individualDailyTarget) {
+    function openModal(dayData, dailyTargetLiters, individualDailyTarget) {
         const actualLiters = dayData.totalLiters;
-        const percentAchieved = (dailyTarget > 0) ? (actualLiters / dailyTarget) * 100 : (actualLiters > 0 ? 100 : 0);
+        const percentAchieved = (dailyTargetLiters > 0) ? (actualLiters / dailyTargetLiters) * 100 : (actualLiters > 0 ? 100 : 0);
         const kpiPercent = Math.min(percentAchieved, 100);
         
-        const dailyTargetLiters = dailyTarget;
-        const dailyTargetBottles = dailyTargetLiters / LITERS_PER_BOTTLE;
-
         modalTitleEl.textContent = `สรุปยอดขาย - วันที่ ${dayData.day} ${monthFilter.options[monthFilter.selectedIndex].text}`;
-        modalDailyActualEl.textContent = `ยอดจริง: ${formatTarget(actualLiters)}`;
-        modalDailyTargetEl.textContent = `เป้าหมาย: ${formatTarget(dailyTargetLiters)}`;
+        modalDailyActualEl.textContent = `ยอดจริง: ${formatLitersAndBottles(actualLiters)}`;
+        modalDailyTargetEl.textContent = `เป้าหมาย: ${formatLitersAndBottles(dailyTargetLiters)}`;
         modalDailyPercentEl.textContent = `${percentAchieved.toFixed(1)}% ของเป้าหมาย`;
         modalDailyKpiBarEl.style.width = `${kpiPercent}%`;
         if (percentAchieved < 50) modalDailyKpiBarEl.style.backgroundColor = "#ef4444";
@@ -812,7 +798,6 @@
         if (userRole !== "BA" && selectedUser === "All Team" && dayData.salesByUser.size > 0) {
             modalUserBreakdownEl.classList.remove("hidden");
             
-            // Individual BA daily target (always based on BASE_MONTHLY_TARGET)
             const userDailyTarget = individualDailyTarget; 
 
             const sortedUsers = Array.from(dayData.salesByUser.entries()).sort((a, b) => b[1].totalLiters - a[1].totalLiters);
@@ -825,7 +810,7 @@
                 modalUserBreakdownListEl.innerHTML += `
                     <div class="grid grid-cols-2 gap-x-2 pb-2 mb-2 border-b border-gray-100">
                         <div class="text-sm text-gray-700">${user}</div>
-                        <div class="text-sm text-right font-semibold text-gray-800">${formatLiters(userData.totalLiters)}</div>
+                        <div class="text-sm text-right font-semibold text-gray-800">${formatBottlesSlashLiters(userData.totalLiters)}</div>
                         <div class="col-span-2">
                             <div class="individual-kpi-bar-background">
                                 <div class="individual-kpi-bar-fill" style="width: ${userPercent}%; background-color: ${barColor};"></div>
@@ -846,7 +831,6 @@
             summary.totalLiters += skuEntry.totalLitersPerSku;
         }
 
-        // Clear previous SKU list (keep header)
         while (modalSkuDetailsContainer.children.length > 1) {
             modalSkuDetailsContainer.removeChild(modalSkuDetailsContainer.lastChild);
         }
@@ -859,7 +843,7 @@
                     <div class="sku-summary-item grid grid-cols-3 gap-4 p-2 border-b border-gray-100">
                         <div class="text-left font-medium text-gray-700">${sku}</div>
                         <div class="text-center text-gray-600">${summary.totalQuantity.toLocaleString('th-TH')}</div>
-                        <div class="text-right font-semibold text-gray-800">${formatLiters(summary.totalLiters)}</div>
+                        <div class="text-right font-semibold text-gray-800">${formatBottlesSlashLiters(summary.totalLiters)}</div>
                     </div>`;
             }
         }
